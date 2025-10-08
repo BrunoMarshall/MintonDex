@@ -18,14 +18,14 @@
       "name": "Marshall",
       "symbol": "MRSH",
       "decimals": 18,
-      "logoURI": "https://raw.githubusercontent.com/BrunoMarshall/MintonDex/main/logos/0xcc3463943Aa68DeD67bA7C128a040583cB59B5e9.jpg"
+      "logoURI": "https://raw.githubusercontent.com/BrunoMarshall/MintonDex/main/logos/0xcc3463943Aa68DeD67bA7C128a040583cB59B5e9.png"
     },
     {
       "address": "0xCd11325Fa7d01Ae694b3292DCbEB1B442D5854D6",
       "name": "SPLIT",
       "symbol": "SPLIT",
       "decimals": 18,
-      "logoURI": "https://raw.githubusercontent.com/BrunoMarshall/MintonDex/main/logos/0xCd11325Fa7d01Ae694b3292DCbEB1B442D5854D6.jpg"
+      "logoURI": "https://raw.githubusercontent.com/BrunoMarshall/MintonDex/main/logos/0xCd11325Fa7d01Ae694b3292DCbEB1B442D5854D6.png"
     }
   ]
 }
