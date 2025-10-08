@@ -141,7 +141,8 @@ contract MintonRouter is ReentrancyGuard {
     function getAmountOut(uint256 amountIn, uint256 reserveIn, uint256 reserveOut) public pure returns (uint256 amountOut) {
         require(amountIn > 0, "MintonRouter: INSUFFICIENT_INPUT_AMOUNT");
         require(reserveIn > 0 && reserveOut > 0, "MintonRouter: INSUFFICIENT_LIQUIDITY");
-        uint256 amountInWithFee = amountIn * 997;
+        // Updated for 1% total fee (0.99 output)
+        uint256 amountInWithFee = amountIn * 990;
         uint256 numerator = amountInWithFee * reserveOut;
         uint256 denominator = (reserveIn * 1000) + amountInWithFee;
         amountOut = numerator / denominator;
