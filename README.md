@@ -4,6 +4,17 @@
 
 A decentralized exchange (DEX) built on Shardeum blockchain, allowing users to swap tokens and provide liquidity.
 
+**Shardeum EVM Testnet (Chain ID: 8119)**
+
+- **MintonFactory:** `0x96a0648b4d3091b6dad451e29ef7fa7b842b6563`
+- **MintonRouter:** `0x1024686499ee9e621b3216a35c9bdf3b6ccc7671`
+- **WSHM (Wrapped SHM):** `0x9988864cb024f0a647c205dbbf96535b0072f40b`
+
+## 💰 Fee Structure
+
+- **Trading Fee:** 1.0% total
+  - 0.3% to Liquidity Providers
+  - 0.7% to Protocol (for development & maintenance)
 
 
 \## Features
@@ -17,14 +28,6 @@ A decentralized exchange (DEX) built on Shardeum blockchain, allowing users to s
 \- 🎨 Custom Minton UI
 
 
-
-\## Deployed Contracts (Shardeum EVM Testnet)
-
-\- \*\*Factory:\*\* 0x73653a3fb19e2b8ac5f88f1603eeb7ba164cfbeb
-
-\- \*\*Router:\*\* 0x13b94479b80bcc600b46a14bebce378da16210d6
-
-\- \*\*Network:\*\* Shardeum EVM Testnet (Chain ID: 8119)
 
 
 
