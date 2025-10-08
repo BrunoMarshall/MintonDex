@@ -875,37 +875,73 @@ async function addLiquidity() {
     
     const amountAWei = web3.utils.toWei(amountA, 'ether');
     const amountBWei = web3.utils.toWei(amountB, 'ether');
-    const amountAMin = (BigInt(amountAWei) * BigInt(95)) / BigInt(100);
-    const amountBMin = (BigInt(amountBWei) * BigInt(95)) / BigInt(100);
-    const deadline = Math.floor(Date.now() / 1000) + 60 * 20;
+    
+    // More lenient slippage - 5% instead of 5%
+    const amountAMin = (BigInt(amountAWei) * BigInt(90)) / BigInt(100); // 10% slippage
+    const amountBMin = (BigInt(amountBWei) * BigInt(90)) / BigInt(100); // 10% slippage
+    
+    // Longer deadline - 30 minutes instead of 20
+    const deadline = Math.floor(Date.now() / 1000) + 60 * 30;
     
     const tokenAContract = new web3.eth.Contract(ERC20_ABI, window.selectedAddTokenA.address);
+    const tokenBContract = new web3.eth.Contract(ERC20_ABI, window.selectedAddTokenB.address);
+    
+    // Check balances first
+    const balanceA = await tokenAContract.methods.balanceOf(currentAccount).call();
+    const balanceB = await tokenBContract.methods.balanceOf(currentAccount).call();
+    
+    if (BigInt(balanceA) < BigInt(amountAWei)) {
+      showStatus(`Insufficient ${window.selectedAddTokenA.symbol} balance`, 'error', 'add-status');
+      return;
+    }
+    
+    if (BigInt(balanceB) < BigInt(amountBWei)) {
+      showStatus(`Insufficient ${window.selectedAddTokenB.symbol} balance`, 'error', 'add-status');
+      return;
+    }
+    
+    // Approve Token A with higher amount for safety
+    const approvalAmountA = (BigInt(amountAWei) * BigInt(110)) / BigInt(100); // 10% extra
+    showStatus(`Approving ${window.selectedAddTokenA.symbol}...`, 'info', 'add-status');
+    
     const allowanceA = await tokenAContract.methods.allowance(currentAccount, ROUTER_ADDRESS).call();
     
     if (BigInt(allowanceA) < BigInt(amountAWei)) {
-      showStatus('Approving Token A...', 'info', 'add-status');
-      await tokenAContract.methods.approve(ROUTER_ADDRESS, amountAWei).send({
+      const approvalTxA = await tokenAContract.methods.approve(ROUTER_ADDRESS, approvalAmountA.toString()).send({
         from: currentAccount,
         maxFeePerGas: web3.utils.toWei('2500000', 'gwei'),
         maxPriorityFeePerGas: web3.utils.toWei('2500000', 'gwei'),
         gas: 100000
       });
+      
+      console.log('Token A approved:', approvalTxA.transactionHash);
+      // Wait a bit for blockchain to process
+      await new Promise(resolve => setTimeout(resolve, 2000));
     }
     
-    const tokenBContract = new web3.eth.Contract(ERC20_ABI, window.selectedAddTokenB.address);
+    // Approve Token B with higher amount for safety
+    const approvalAmountB = (BigInt(amountBWei) * BigInt(110)) / BigInt(100); // 10% extra
+    showStatus(`Approving ${window.selectedAddTokenB.symbol}...`, 'info', 'add-status');
+    
     const allowanceB = await tokenBContract.methods.allowance(currentAccount, ROUTER_ADDRESS).call();
     
     if (BigInt(allowanceB) < BigInt(amountBWei)) {
-      showStatus('Approving Token B...', 'info', 'add-status');
-      await tokenBContract.methods.approve(ROUTER_ADDRESS, amountBWei).send({
+      const approvalTxB = await tokenBContract.methods.approve(ROUTER_ADDRESS, approvalAmountB.toString()).send({
         from: currentAccount,
         maxFeePerGas: web3.utils.toWei('2500000', 'gwei'),
         maxPriorityFeePerGas: web3.utils.toWei('2500000', 'gwei'),
         gas: 100000
       });
+      
+      console.log('Token B approved:', approvalTxB.transactionHash);
+      // Wait a bit for blockchain to process
+      await new Promise(resolve => setTimeout(resolve, 2000));
     }
     
-    showStatus('Adding liquidity...', 'info', 'add-status');
+    showStatus('Adding liquidity... (This may take a moment)', 'info', 'add-status');
+    
+    // Updated deadline after approvals
+    const finalDeadline = Math.floor(Date.now() / 1000) + 60 * 30;
     
     const tx = await routerContract.methods.addLiquidity(
       window.selectedAddTokenA.address,
@@ -915,12 +951,12 @@ async function addLiquidity() {
       amountAMin.toString(),
       amountBMin.toString(),
       currentAccount,
-      deadline
+      finalDeadline
     ).send({
       from: currentAccount,
       maxFeePerGas: web3.utils.toWei('2500000', 'gwei'),
       maxPriorityFeePerGas: web3.utils.toWei('2500000', 'gwei'),
-      gas: 500000
+      gas: 600000 // Increased gas limit
     });
     
     showStatus(`Liquidity added successfully! <a href="https://explorer-mezame.shardeum.org/tx/${tx.transactionHash}" target="_blank">View Transaction</a>`, 'success', 'add-status');
@@ -932,7 +968,22 @@ async function addLiquidity() {
     
   } catch (error) {
     console.error('Add liquidity error:', error);
-    showStatus(error.message || 'Failed to add liquidity', 'error', 'add-status');
+    
+    // Better error messages
+    let errorMsg = 'Failed to add liquidity';
+    if (error.message.includes('insufficient funds')) {
+      errorMsg = 'Insufficient SHM for gas fees';
+    } else if (error.message.includes('INSUFFICIENT_A_AMOUNT')) {
+      errorMsg = 'Token A amount too low for current pool ratio';
+    } else if (error.message.includes('INSUFFICIENT_B_AMOUNT')) {
+      errorMsg = 'Token B amount too low for current pool ratio';
+    } else if (error.message.includes('EXPIRED')) {
+      errorMsg = 'Transaction expired. Please try again.';
+    } else if (error.message.includes('user rejected')) {
+      errorMsg = 'Transaction rejected by user';
+    }
+    
+    showStatus(errorMsg, 'error', 'add-status');
   }
 }
 
