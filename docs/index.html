@@ -14,6 +14,7 @@
         <nav>
             <a href="index.html">Swap</a>
             <a href="pool.html">Pool</a>
+            <a href="wrap.html">Wrap</a>
             <a href="https://mintonshardeum.com" target="_blank">Create Token</a>
             <div id="wallet-info" class="wallet-info">
                 <button id="connect-metamask">Connect Wallet</button>
@@ -87,6 +88,9 @@
                     <a href="https://mintonshardeum.com" target="_blank" style="color: #667eea; text-decoration: underline;">MintonShardeum</a>
                     and start trading here!
                 </p>
+                <p style="color: #666; font-size: 0.85rem; margin-top: 10px;">
+                    Want to list your token? Check our <a href="https://github.com/BrunoMarshall/MintonDex/blob/main/TOKEN_SUBMISSION_GUIDE.md" target="_blank" style="color: #667eea;">submission guide</a>
+                </p>
             </div>
         </section>
 
@@ -97,17 +101,10 @@
                     <h2>Select a Token</h2>
                     <button class="close-modal">&times;</button>
                 </div>
-                <input type="text" id="token-search" placeholder="Search by name or paste address..." class="token-search">
-                <div class="common-tokens" id="common-tokens" style="display: none;">
-                    <div class="common-token-label">Common Tokens</div>
-                    <div id="common-tokens-list"></div>
-                </div>
+                <input type="text" id="token-search" placeholder="Search by name, symbol or paste address..." class="token-search">
                 <div class="token-list" id="token-list">
                     <div style="text-align: center; padding: 40px; color: #999;">
-                        <p>Paste a token address to add it</p>
-                        <p style="margin-top: 10px; font-size: 0.85rem;">
-                            Create tokens on <a href="https://mintonshardeum.com" target="_blank" style="color: #667eea;">MintonShardeum</a>
-                        </p>
+                        <p>Loading tokens...</p>
                     </div>
                 </div>
             </div>

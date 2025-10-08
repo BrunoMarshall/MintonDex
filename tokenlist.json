@@ -1,0 +1,31 @@
+{
+  "name": "MintonDex Default Token List",
+  "version": {
+    "major": 1,
+    "minor": 0,
+    "patch": 0
+  },
+  "tokens": [
+    {
+      "address": "0x9988864cb024f0a647c205dbbf96535b0072f40b",
+      "name": "Wrapped SHM",
+      "symbol": "WSHM",
+      "decimals": 18,
+      "logoURI": "https://raw.githubusercontent.com/BrunoMarshall/MintonDex/main/logos/wshm.png"
+    },
+    {
+      "address": "0xcc3463943Aa68DeD67bA7C128a040583cB59B5e9",
+      "name": "Marshall",
+      "symbol": "MRSH",
+      "decimals": 18,
+      "logoURI": "https://raw.githubusercontent.com/BrunoMarshall/MintonDex/main/logos/0xcc3463943Aa68DeD67bA7C128a040583cB59B5e9.jpg"
+    },
+    {
+      "address": "0xCd11325Fa7d01Ae694b3292DCbEB1B442D5854D6",
+      "name": "SPLIT",
+      "symbol": "SPLIT",
+      "decimals": 18,
+      "logoURI": "https://raw.githubusercontent.com/BrunoMarshall/MintonDex/main/logos/0xCd11325Fa7d01Ae694b3292DCbEB1B442D5854D6.jpg"
+    }
+  ]
+}

@@ -3,6 +3,7 @@ const web3 = new Web3(window.ethereum);
 // Contract Addresses
 const FACTORY_ADDRESS = "0x73653a3fb19e2b8ac5f88f1603eeb7ba164cfbeb";
 const ROUTER_ADDRESS = "0x13b94479b80bcc600b46a14bebce378da16210d6";
+const WSHM_ADDRESS = "0x9988864cb024f0a647c205dbbf96535b0072f40b";
 
 // ABIs
 const FACTORY_ABI = [
@@ -248,7 +249,7 @@ const connectionStatus = document.getElementById('connection-status');
 document.addEventListener('DOMContentLoaded', async () => {
   await initializeApp();
   setupEventListeners();
-  await loadCommonTokens();
+  await loadTokenList();
 });
 
 async function initializeApp() {
@@ -263,14 +264,12 @@ async function initializeApp() {
       console.error('Error initializing:', error);
     }
 
-    // Listen for account changes
     window.ethereum.on('accountsChanged', handleAccountsChanged);
     window.ethereum.on('chainChanged', () => window.location.reload());
   }
 }
 
 function setupEventListeners() {
-  // Connect/Disconnect buttons
   if (connectButton) {
     connectButton.addEventListener('click', connectWallet);
   }
@@ -278,7 +277,6 @@ function setupEventListeners() {
     disconnectButton.addEventListener('click', disconnectWallet);
   }
 
-  // Swap page elements
   const swapBtn = document.getElementById('swap-btn');
   const inputAmount = document.getElementById('input-amount');
   const selectTokenIn = document.getElementById('select-token-in');
@@ -293,10 +291,8 @@ function setupEventListeners() {
   if (swapDirection) swapDirection.addEventListener('click', flipTokens);
   if (maxBtn) maxBtn.addEventListener('click', setMaxAmount);
 
-  // Pool page elements
   setupPoolEventListeners();
 
-  // Modal
   const modal = document.getElementById('token-modal');
   const closeModal = document.querySelector('.close-modal');
   const tokenSearch = document.getElementById('token-search');
@@ -321,7 +317,6 @@ function setupEventListeners() {
 }
 
 function setupPoolEventListeners() {
-  // Tab switching
   const tabBtns = document.querySelectorAll('.tab-btn');
   tabBtns.forEach(btn => {
     btn.addEventListener('click', () => {
@@ -330,7 +325,6 @@ function setupPoolEventListeners() {
     });
   });
 
-  // Add liquidity
   const addBtn = document.getElementById('add-liquidity-btn');
   const selectAddTokenA = document.getElementById('select-add-token-a');
   const selectAddTokenB = document.getElementById('select-add-token-b');
@@ -343,7 +337,6 @@ function setupPoolEventListeners() {
   if (addAmountA) addAmountA.addEventListener('input', calculateLiquidityB);
   if (addAmountB) addAmountB.addEventListener('input', calculateLiquidityA);
 
-  // Remove liquidity
   const removeBtn = document.getElementById('remove-liquidity-btn');
   const removeSlider = document.getElementById('remove-slider');
   const presetBtns = document.querySelectorAll('.preset-btn');
@@ -362,7 +355,6 @@ function setupPoolEventListeners() {
   });
 }
 
-// Wallet Functions
 async function connectWallet() {
   if (typeof window.ethereum === 'undefined') {
     alert('MetaMask is not installed. Please install it to use MintonDex.');
@@ -477,11 +469,45 @@ function updateButtonStates() {
   }
 }
 
-// Token Functions
-async function loadCommonTokens() {
-  // You can add common tokens here
-  // For now, we'll leave it empty and users can add their own tokens
-  tokenList = [];
+// Load token list from GitHub
+async function loadTokenList() {
+  try {
+    const response = await fetch('https://raw.githubusercontent.com/BrunoMarshall/MintonDex/main/tokenlist.json');
+    const data = await response.json();
+    tokenList = data.tokens || [];
+    
+    // Update balances if wallet connected
+    if (currentAccount) {
+      await updateTokenBalances();
+    }
+  } catch (error) {
+    console.error('Error loading token list:', error);
+    // Fallback to default tokens
+    tokenList = [
+      {
+        address: WSHM_ADDRESS,
+        name: 'Wrapped SHM',
+        symbol: 'WSHM',
+        decimals: 18,
+        logoURI: 'https://raw.githubusercontent.com/BrunoMarshall/MintonDex/main/logos/wshm.png'
+      }
+    ];
+  }
+}
+
+async function updateTokenBalances() {
+  if (!currentAccount) return;
+  
+  for (let token of tokenList) {
+    try {
+      const tokenContract = new web3.eth.Contract(ERC20_ABI, token.address);
+      const balance = await tokenContract.methods.balanceOf(currentAccount).call();
+      token.balance = web3.utils.fromWei(balance, 'ether');
+    } catch (error) {
+      console.error(`Error fetching balance for ${token.symbol}:`, error);
+      token.balance = '0';
+    }
+  }
 }
 
 function openTokenModal(callback) {
@@ -503,6 +529,9 @@ function displayTokenList(tokens) {
     tokenListEl.innerHTML = `
       <div style="text-align: center; padding: 40px; color: #999;">
         <p>No tokens found. Paste a token address to add it.</p>
+        <p style="margin-top: 10px; font-size: 0.85rem;">
+          Create tokens on <a href="https://mintonshardeum.com" target="_blank" style="color: #667eea;">MintonShardeum</a>
+        </p>
       </div>
     `;
     return;
@@ -510,11 +539,12 @@ function displayTokenList(tokens) {
 
   tokenListEl.innerHTML = tokens.map(token => `
     <div class="token-item" onclick="selectToken('${token.address}')">
+      ${token.logoURI ? `<img src="${token.logoURI}" alt="${token.symbol}" style="width: 32px; height: 32px; border-radius: 50%;">` : '<div style="width: 32px; height: 32px; border-radius: 50%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);"></div>'}
       <div class="token-item-info">
         <div class="token-item-symbol">${token.symbol}</div>
         <div class="token-item-name">${token.name}</div>
       </div>
-      ${token.balance ? `<div class="token-item-balance">${token.balance}</div>` : ''}
+      ${token.balance ? `<div class="token-item-balance">${parseFloat(token.balance).toFixed(4)}</div>` : ''}
     </div>
   `).join('');
 }
@@ -564,11 +594,11 @@ async function getTokenInfo(address) {
 }
 
 async function selectToken(address) {
-  const tokenInfo = await getTokenInfo(address);
-  if (!tokenInfo) return;
-
-  // Add to token list if not already there
-  if (!tokenList.find(t => t.address.toLowerCase() === address.toLowerCase())) {
+  let tokenInfo = tokenList.find(t => t.address.toLowerCase() === address.toLowerCase());
+  
+  if (!tokenInfo) {
+    tokenInfo = await getTokenInfo(address);
+    if (!tokenInfo) return;
     tokenList.push(tokenInfo);
   }
 
@@ -578,19 +608,19 @@ async function selectToken(address) {
   if (currentModalCallback === 'in') {
     selectedTokenIn = tokenInfo;
     document.getElementById('token-in-symbol').textContent = tokenInfo.symbol;
-    document.getElementById('balance-in').textContent = `Balance: ${parseFloat(tokenInfo.balance).toFixed(4)}`;
+    document.getElementById('balance-in').textContent = `Balance: ${parseFloat(tokenInfo.balance || 0).toFixed(4)}`;
   } else if (currentModalCallback === 'out') {
     selectedTokenOut = tokenInfo;
     document.getElementById('token-out-symbol').textContent = tokenInfo.symbol;
-    document.getElementById('balance-out').textContent = `Balance: ${parseFloat(tokenInfo.balance).toFixed(4)}`;
+    document.getElementById('balance-out').textContent = `Balance: ${parseFloat(tokenInfo.balance || 0).toFixed(4)}`;
   } else if (currentModalCallback === 'addA') {
     window.selectedAddTokenA = tokenInfo;
     document.getElementById('add-token-a-symbol').textContent = tokenInfo.symbol;
-    document.getElementById('add-balance-a').textContent = `Balance: ${parseFloat(tokenInfo.balance).toFixed(4)}`;
+    document.getElementById('add-balance-a').textContent = `Balance: ${parseFloat(tokenInfo.balance || 0).toFixed(4)}`;
   } else if (currentModalCallback === 'addB') {
     window.selectedAddTokenB = tokenInfo;
     document.getElementById('add-token-b-symbol').textContent = tokenInfo.symbol;
-    document.getElementById('add-balance-b').textContent = `Balance: ${parseFloat(tokenInfo.balance).toFixed(4)}`;
+    document.getElementById('add-balance-b').textContent = `Balance: ${parseFloat(tokenInfo.balance || 0).toFixed(4)}`;
   }
 
   updateButtonStates();
@@ -622,7 +652,6 @@ async function calculateOutput() {
     
     outputAmount.value = parseFloat(amountOut).toFixed(6);
     
-    // Calculate and display swap details
     const exchangeRate = parseFloat(amountOut) / parseFloat(amountIn);
     const fee = parseFloat(amountIn) * 0.003;
     const priceImpact = await calculatePriceImpact(amountInWei, amounts[1], path);
@@ -661,12 +690,12 @@ function flipTokens() {
   
   if (selectedTokenIn) {
     document.getElementById('token-in-symbol').textContent = selectedTokenIn.symbol;
-    document.getElementById('balance-in').textContent = `Balance: ${parseFloat(selectedTokenIn.balance).toFixed(4)}`;
+    document.getElementById('balance-in').textContent = `Balance: ${parseFloat(selectedTokenIn.balance || 0).toFixed(4)}`;
   }
   
   if (selectedTokenOut) {
     document.getElementById('token-out-symbol').textContent = selectedTokenOut.symbol;
-    document.getElementById('balance-out').textContent = `Balance: ${parseFloat(selectedTokenOut.balance).toFixed(4)}`;
+    document.getElementById('balance-out').textContent = `Balance: ${parseFloat(selectedTokenOut.balance || 0).toFixed(4)}`;
   }
   
   const inputValue = document.getElementById('input-amount').value;
@@ -717,7 +746,7 @@ async function executeSwap() {
     const amountInWei = web3.utils.toWei(amountIn, 'ether');
     const path = [selectedTokenIn.address, selectedTokenOut.address];
     const amounts = await routerContract.methods.getAmountsOut(amountInWei, path).call();
-    const amountOutMin = (BigInt(amounts[1]) * BigInt(95)) / BigInt(100); // 5% slippage
+    const amountOutMin = (BigInt(amounts[1]) * BigInt(95)) / BigInt(100);
     const deadline = Math.floor(Date.now() / 1000) + 60 * 20; // 20 minutes
     
     // Check and approve token
@@ -751,7 +780,6 @@ async function executeSwap() {
     
     showStatus(`Swap successful! <a href="https://explorer-mezame.shardeum.org/tx/${tx.transactionHash}" target="_blank">View Transaction</a>`, 'success', 'status-message');
     
-    // Clear inputs and refresh balances
     document.getElementById('input-amount').value = '';
     document.getElementById('output-amount').value = '';
     await updateBalances();
@@ -779,7 +807,6 @@ async function calculateLiquidityB() {
     ).call();
     
     if (reserves.reserveA === '0' || reserves.reserveB === '0') {
-      // New pool - user can set any ratio
       return;
     }
     
@@ -852,7 +879,6 @@ async function addLiquidity() {
     const amountBMin = (BigInt(amountBWei) * BigInt(95)) / BigInt(100);
     const deadline = Math.floor(Date.now() / 1000) + 60 * 20;
     
-    // Approve Token A
     const tokenAContract = new web3.eth.Contract(ERC20_ABI, window.selectedAddTokenA.address);
     const allowanceA = await tokenAContract.methods.allowance(currentAccount, ROUTER_ADDRESS).call();
     
@@ -866,7 +892,6 @@ async function addLiquidity() {
       });
     }
     
-    // Approve Token B
     const tokenBContract = new web3.eth.Contract(ERC20_ABI, window.selectedAddTokenB.address);
     const allowanceB = await tokenBContract.methods.allowance(currentAccount, ROUTER_ADDRESS).call();
     
@@ -900,7 +925,6 @@ async function addLiquidity() {
     
     showStatus(`Liquidity added successfully! <a href="https://explorer-mezame.shardeum.org/tx/${tx.transactionHash}" target="_blank">View Transaction</a>`, 'success', 'add-status');
     
-    // Clear inputs
     document.getElementById('add-amount-a').value = '';
     document.getElementById('add-amount-b').value = '';
     await updateBalances();
@@ -946,7 +970,6 @@ async function removeLiquidity() {
     
     const deadline = Math.floor(Date.now() / 1000) + 60 * 20;
     
-    // Approve LP tokens
     const allowance = await pairContract.methods.allowance(currentAccount, ROUTER_ADDRESS).call();
     
     if (BigInt(allowance) < BigInt(liquidityToRemove)) {
@@ -978,7 +1001,6 @@ async function removeLiquidity() {
     
     showStatus(`Liquidity removed successfully! <a href="https://explorer-mezame.shardeum.org/tx/${tx.transactionHash}" target="_blank">View Transaction</a>`, 'success', 'remove-status');
     
-    // Reset slider
     removeSlider.value = 0;
     updateRemoveAmount();
     await loadUserPositions();
@@ -1007,12 +1029,8 @@ async function loadUserPositions() {
   try {
     positionsContainer.innerHTML = '<div class="loading" style="text-align: center; padding: 40px;">Loading positions...</div>';
     
-    // This is a simplified version - in production you'd want to track user's positions
     const pairCount = await factoryContract.methods.allPairsLength().call();
     const positions = [];
-    
-    // For demo purposes, we'll just show a message
-    // In production, you'd iterate through pairs and check balances
     
     positionsContainer.innerHTML = `
       <div class="no-positions">
@@ -1079,6 +1097,5 @@ function showStatus(message, type, elementId = 'status-message') {
   }
 }
 
-// Make functions globally accessible for onclick handlers
 window.selectToken = selectToken;
-window.loadTokens = loadCommonTokens;
+window.loadTokenList = loadTokenList;

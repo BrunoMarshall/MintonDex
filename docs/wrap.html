@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wrap SHM - MintonDex</title>
+    <meta name="description" content="Convert between SHM and WSHM on MintonDex">
+    <link rel="stylesheet" href="assets/css/styles.css">
+    <link rel="icon" href="assets/images/mintonshardeum_favicon.png">
+</head>
+<body>
+    <header>
+        <div class="header-title">MintonDex</div>
+        <nav>
+            <a href="index.html">Swap</a>
+            <a href="pool.html">Pool</a>
+            <a href="wrap.html">Wrap</a>
+            <a href="https://mintonshardeum.com" target="_blank">Create Token</a>
+            <div id="wallet-info" class="wallet-info">
+                <button id="connect-metamask">Connect Wallet</button>
+                <span id="connection-status" style="display: none;"></span>
+                <button id="disconnect-metamask" style="display: none;">Disconnect</button>
+            </div>
+        </nav>
+    </header>
+    <main>
+        <section class="logo-section">
+            <img src="assets/images/mintonshardeum_logo.png" alt="MintonDex Logo" class="main-logo">
+        </section>
+        <section class="swap-container">
+            <h1>Wrap / Unwrap SHM</h1>
+            <p>Convert between SHM and WSHM</p>
+            
+            <div class="pool-tabs" style="margin-bottom: 24px;">
+                <button class="tab-btn active" data-tab="wrap">Wrap SHM</button>
+                <button class="tab-btn" data-tab="unwrap">Unwrap WSHM</button>
+            </div>
+
+            <!-- Wrap Tab -->
+            <div class="tab-content active" id="wrap-tab">
+                <div class="swap-box">
+                    <div class="token-input-group">
+                        <label>Amount to Wrap</label>
+                        <div class="input-row">
+                            <input type="text" id="wrap-amount" placeholder="0.0" class="amount-input">
+                            <button class="token-select" style="cursor: default; opacity: 0.8;">
+                                <span>SHM</span>
+                            </button>
+                        </div>
+                        <div class="balance-row">
+                            <span id="shm-balance">Balance: 0.00 SHM</span>
+                            <button class="max-btn" id="wrap-max-btn">MAX</button>
+                        </div>
+                    </div>
+
+                    <div class="swap-arrow">
+                        <div style="font-size: 1.5rem; color: #667eea;">↓</div>
+                    </div>
+
+                    <div class="token-input-group">
+                        <label>You will receive</label>
+                        <div class="input-row">
+                            <input type="text" id="wrap-output" placeholder="0.0" class="amount-input" readonly>
+                            <button class="token-select" style="cursor: default; opacity: 0.8;">
+                                <span>WSHM</span>
+                            </button>
+                        </div>
+                        <div class="balance-row">
+                            <span id="wshm-balance">Balance: 0.00 WSHM</span>
+                        </div>
+                    </div>
+
+                    <button class="action-btn" id="wrap-btn">Connect Wallet</button>
+                    <div id="wrap-status" class="status-message"></div>
+                </div>
+
+                <div class="info-section" style="margin-top: 20px; padding: 16px; background: #e8f0fe; border-radius: 12px;">
+                    <p style="color: #1967d2; font-size: 0.9rem; margin: 0;">
+                        <strong>ℹ️ What is WSHM?</strong> Wrapped SHM (WSHM) is an ERC-20 token that represents SHM on a 1:1 basis. 
+                        You need WSHM to trade SHM on MintonDex.
+                    </p>
+                </div>
+            </div>
+
+            <!-- Unwrap Tab -->
+            <div class="tab-content" id="unwrap-tab">
+                <div class="swap-box">
+                    <div class="token-input-group">
+                        <label>Amount to Unwrap</label>
+                        <div class="input-row">
+                            <input type="text" id="unwrap-amount" placeholder="0.0" class="amount-input">
+                            <button class="token-select" style="cursor: default; opacity: 0.8;">
+                                <span>WSHM</span>
+                            </button>
+                        </div>
+                        <div class="balance-row">
+                            <span id="unwrap-wshm-balance">Balance: 0.00 WSHM</span>
+                            <button class="max-btn" id="unwrap-max-btn">MAX</button>
+                        </div>
+                    </div>
+
+                    <div class="swap-arrow">
+                        <div style="font-size: 1.5rem; color: #667eea;">↓</div>
+                    </div>
+
+                    <div class="token-input-group">
+                        <label>You will receive</label>
+                        <div class="input-row">
+                            <input type="text" id="unwrap-output" placeholder="0.0" class="amount-input" readonly>
+                            <button class="token-select" style="cursor: default; opacity: 0.8;">
+                                <span>SHM</span>
+                            </button>
+                        </div>
+                        <div class="balance-row">
+                            <span id="unwrap-shm-balance">Balance: 0.00 SHM</span>
+                        </div>
+                    </div>
+
+                    <button class="action-btn" id="unwrap-btn">Connect Wallet</button>
+                    <div id="unwrap-status" class="status-message"></div>
+                </div>
+
+                <div class="info-section" style="margin-top: 20px; padding: 16px; background: #fff3cd; border-radius: 12px;">
+                    <p style="color: #856404; font-size: 0.9rem; margin: 0;">
+                        <strong>💡 Tip:</strong> Unwrapping converts WSHM back to native SHM. The conversion is always 1:1.
+                    </p>
+                </div>
+            </div>
+
+            <div style="margin-top: 30px; padding: 20px; background: #f8f9fa; border-radius: 12px;">
+                <h3 style="color: #667eea; margin-bottom: 10px; font-size: 1.1rem;">Contract Information</h3>
+                <p style="color: #666; font-size: 0.85rem; margin: 5px 0;">
+                    <strong>WSHM Contract:</strong> 
+                    <a href="https://explorer-mezame.shardeum.org/address/0x9988864cb024f0a647c205dbbf96535b0072f40b" target="_blank" style="color: #667eea; font-family: monospace; word-break: break-all;">
+                        0x9988864cb024f0a647c205dbbf96535b0072f40b
+                    </a>
+                </p>
+                <p style="color: #666; font-size: 0.85rem; margin: 5px 0;">
+                    <strong>Exchange Rate:</strong> Always 1:1 (1 SHM = 1 WSHM)
+                </p>
+            </div>
+
+            <div style="margin-top: 20px; text-align: center;">
+                <p style="color: #666; font-size: 0.9rem;">
+                    Need WSHM to trade? Wrap your SHM here, then head to the 
+                    <a href="index.html" style="color: #667eea; text-decoration: underline;">Swap</a> page!
+                </p>
+            </div>
+        </section>
+    </main>
+    <footer>
+        <div class="social-links">
+            <a href="https://discord.com/invite/shardeum" target="_blank"><img src="assets/images/discord.svg" alt="Discord"></a>
+            <a href="https://github.com/BrunoMarshall/MintonDex" target="_blank"><img src="assets/images/github.svg" alt="GitHub"></a>
+            <a href="https://www.linkedin.com/company/shardeum" target="_blank"><img src="assets/images/linkedin.svg" alt="LinkedIn"></a>
+            <a href="https://t.me/shardeum" target="_blank"><img src="assets/images/telegram.svg" alt="Telegram"></a>
+            <a href="https://twitter.com/shardeum" target="_blank"><img src="assets/images/twitter.svg" alt="Twitter"></a>
+            <a href="https://www.youtube.com/@shardeum" target="_blank"><img src="assets/images/youtube.svg" alt="YouTube"></a>
+        </div>
+        <div style="margin-top: 15px;">
+            <a href="https://mintonshardeum.com" target="_blank" style="color: #667eea; text-decoration: none; font-weight: 600;">MintonShardeum</a>
+            <span style="margin: 0 10px; color: #999;">|</span>
+            <a href="https://explorer-mezame.shardeum.org/" target="_blank" style="color: #667eea; text-decoration: none;">Explorer</a>
+        </div>
+        <img src="assets/images/Shardeum_logo_white.png" alt="Shardeum Logo" class="shardeum-logo" style="margin-top: 15px;">
+    </footer>
+    <script src="assets/js/web3.min.js"></script>
+    <script src="assets/js/wrap.js"></script>
+</body>
+</html>
