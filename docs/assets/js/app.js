@@ -1,0 +1,1084 @@
+const web3 = new Web3(window.ethereum);
+
+// Contract Addresses
+const FACTORY_ADDRESS = "0x73653a3fb19e2b8ac5f88f1603eeb7ba164cfbeb";
+const ROUTER_ADDRESS = "0x13b94479b80bcc600b46a14bebce378da16210d6";
+
+// ABIs
+const FACTORY_ABI = [
+  {
+    "inputs": [
+      { "internalType": "address", "name": "tokenA", "type": "address" },
+      { "internalType": "address", "name": "tokenB", "type": "address" }
+    ],
+    "name": "createPair",
+    "outputs": [{ "internalType": "address", "name": "pair", "type": "address" }],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      { "internalType": "address", "name": "", "type": "address" },
+      { "internalType": "address", "name": "", "type": "address" }
+    ],
+    "name": "getPair",
+    "outputs": [{ "internalType": "address", "name": "", "type": "address" }],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "allPairsLength",
+    "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }],
+    "stateMutability": "view",
+    "type": "function"
+  }
+];
+
+const ROUTER_ABI = [
+  {
+    "inputs": [
+      { "internalType": "address", "name": "tokenA", "type": "address" },
+      { "internalType": "address", "name": "tokenB", "type": "address" },
+      { "internalType": "uint256", "name": "amountADesired", "type": "uint256" },
+      { "internalType": "uint256", "name": "amountBDesired", "type": "uint256" },
+      { "internalType": "uint256", "name": "amountAMin", "type": "uint256" },
+      { "internalType": "uint256", "name": "amountBMin", "type": "uint256" },
+      { "internalType": "address", "name": "to", "type": "address" },
+      { "internalType": "uint256", "name": "deadline", "type": "uint256" }
+    ],
+    "name": "addLiquidity",
+    "outputs": [
+      { "internalType": "uint256", "name": "amountA", "type": "uint256" },
+      { "internalType": "uint256", "name": "amountB", "type": "uint256" },
+      { "internalType": "uint256", "name": "liquidity", "type": "uint256" }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      { "internalType": "address", "name": "tokenA", "type": "address" },
+      { "internalType": "address", "name": "tokenB", "type": "address" },
+      { "internalType": "uint256", "name": "liquidity", "type": "uint256" },
+      { "internalType": "uint256", "name": "amountAMin", "type": "uint256" },
+      { "internalType": "uint256", "name": "amountBMin", "type": "uint256" },
+      { "internalType": "address", "name": "to", "type": "address" },
+      { "internalType": "uint256", "name": "deadline", "type": "uint256" }
+    ],
+    "name": "removeLiquidity",
+    "outputs": [
+      { "internalType": "uint256", "name": "amountA", "type": "uint256" },
+      { "internalType": "uint256", "name": "amountB", "type": "uint256" }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      { "internalType": "uint256", "name": "amountIn", "type": "uint256" },
+      { "internalType": "uint256", "name": "amountOutMin", "type": "uint256" },
+      { "internalType": "address[]", "name": "path", "type": "address[]" },
+      { "internalType": "address", "name": "to", "type": "address" },
+      { "internalType": "uint256", "name": "deadline", "type": "uint256" }
+    ],
+    "name": "swapExactTokensForTokens",
+    "outputs": [{ "internalType": "uint256[]", "name": "amounts", "type": "uint256[]" }],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      { "internalType": "uint256", "name": "amountIn", "type": "uint256" },
+      { "internalType": "address[]", "name": "path", "type": "address[]" }
+    ],
+    "name": "getAmountsOut",
+    "outputs": [{ "internalType": "uint256[]", "name": "amounts", "type": "uint256[]" }],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      { "internalType": "address", "name": "tokenA", "type": "address" },
+      { "internalType": "address", "name": "tokenB", "type": "address" }
+    ],
+    "name": "getReserves",
+    "outputs": [
+      { "internalType": "uint256", "name": "reserveA", "type": "uint256" },
+      { "internalType": "uint256", "name": "reserveB", "type": "uint256" }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  }
+];
+
+const ERC20_ABI = [
+  {
+    "inputs": [],
+    "name": "name",
+    "outputs": [{ "internalType": "string", "name": "", "type": "string" }],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "symbol",
+    "outputs": [{ "internalType": "string", "name": "", "type": "string" }],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "decimals",
+    "outputs": [{ "internalType": "uint8", "name": "", "type": "uint8" }],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [{ "internalType": "address", "name": "account", "type": "address" }],
+    "name": "balanceOf",
+    "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      { "internalType": "address", "name": "spender", "type": "address" },
+      { "internalType": "uint256", "name": "amount", "type": "uint256" }
+    ],
+    "name": "approve",
+    "outputs": [{ "internalType": "bool", "name": "", "type": "bool" }],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      { "internalType": "address", "name": "owner", "type": "address" },
+      { "internalType": "address", "name": "spender", "type": "address" }
+    ],
+    "name": "allowance",
+    "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }],
+    "stateMutability": "view",
+    "type": "function"
+  }
+];
+
+const PAIR_ABI = [
+  {
+    "inputs": [],
+    "name": "token0",
+    "outputs": [{ "internalType": "address", "name": "", "type": "address" }],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "token1",
+    "outputs": [{ "internalType": "address", "name": "", "type": "address" }],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "getReserves",
+    "outputs": [
+      { "internalType": "uint256", "name": "reserve0", "type": "uint256" },
+      { "internalType": "uint256", "name": "reserve1", "type": "uint256" },
+      { "internalType": "uint256", "name": "blockTimestampLast", "type": "uint256" }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "totalSupply",
+    "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [{ "internalType": "address", "name": "account", "type": "address" }],
+    "name": "balanceOf",
+    "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      { "internalType": "address", "name": "spender", "type": "address" },
+      { "internalType": "uint256", "name": "amount", "type": "uint256" }
+    ],
+    "name": "approve",
+    "outputs": [{ "internalType": "bool", "name": "", "type": "bool" }],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  }
+];
+
+// Contract Instances
+const factoryContract = new web3.eth.Contract(FACTORY_ABI, FACTORY_ADDRESS);
+const routerContract = new web3.eth.Contract(ROUTER_ABI, ROUTER_ADDRESS);
+
+// Network Configuration
+const SHARDEUM_TESTNET = {
+  chainId: '0x1FB7',
+  chainName: 'Shardeum EVM Testnet',
+  nativeCurrency: {
+    name: 'Shardeum',
+    symbol: 'SHM',
+    decimals: 18
+  },
+  rpcUrls: ['https://api-mezame.shardeum.org/'],
+  blockExplorerUrls: ['https://explorer-mezame.shardeum.org/']
+};
+
+// Global State
+let currentAccount = null;
+let selectedTokenIn = null;
+let selectedTokenOut = null;
+let tokenList = [];
+let currentModalCallback = null;
+
+// DOM Elements
+const connectButton = document.getElementById('connect-metamask');
+const disconnectButton = document.getElementById('disconnect-metamask');
+const connectionStatus = document.getElementById('connection-status');
+
+// Initialize
+document.addEventListener('DOMContentLoaded', async () => {
+  await initializeApp();
+  setupEventListeners();
+  await loadCommonTokens();
+});
+
+async function initializeApp() {
+  if (window.ethereum) {
+    try {
+      const accounts = await web3.eth.getAccounts();
+      if (accounts.length > 0) {
+        currentAccount = accounts[0];
+        await updateConnectionStatus();
+      }
+    } catch (error) {
+      console.error('Error initializing:', error);
+    }
+
+    // Listen for account changes
+    window.ethereum.on('accountsChanged', handleAccountsChanged);
+    window.ethereum.on('chainChanged', () => window.location.reload());
+  }
+}
+
+function setupEventListeners() {
+  // Connect/Disconnect buttons
+  if (connectButton) {
+    connectButton.addEventListener('click', connectWallet);
+  }
+  if (disconnectButton) {
+    disconnectButton.addEventListener('click', disconnectWallet);
+  }
+
+  // Swap page elements
+  const swapBtn = document.getElementById('swap-btn');
+  const inputAmount = document.getElementById('input-amount');
+  const selectTokenIn = document.getElementById('select-token-in');
+  const selectTokenOut = document.getElementById('select-token-out');
+  const swapDirection = document.getElementById('swap-direction');
+  const maxBtn = document.getElementById('max-btn');
+
+  if (swapBtn) swapBtn.addEventListener('click', executeSwap);
+  if (inputAmount) inputAmount.addEventListener('input', calculateOutput);
+  if (selectTokenIn) selectTokenIn.addEventListener('click', () => openTokenModal('in'));
+  if (selectTokenOut) selectTokenOut.addEventListener('click', () => openTokenModal('out'));
+  if (swapDirection) swapDirection.addEventListener('click', flipTokens);
+  if (maxBtn) maxBtn.addEventListener('click', setMaxAmount);
+
+  // Pool page elements
+  setupPoolEventListeners();
+
+  // Modal
+  const modal = document.getElementById('token-modal');
+  const closeModal = document.querySelector('.close-modal');
+  const tokenSearch = document.getElementById('token-search');
+
+  if (closeModal) {
+    closeModal.addEventListener('click', () => {
+      modal.classList.remove('active');
+    });
+  }
+
+  if (modal) {
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) {
+        modal.classList.remove('active');
+      }
+    });
+  }
+
+  if (tokenSearch) {
+    tokenSearch.addEventListener('input', filterTokens);
+  }
+}
+
+function setupPoolEventListeners() {
+  // Tab switching
+  const tabBtns = document.querySelectorAll('.tab-btn');
+  tabBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const tab = btn.dataset.tab;
+      switchTab(tab);
+    });
+  });
+
+  // Add liquidity
+  const addBtn = document.getElementById('add-liquidity-btn');
+  const selectAddTokenA = document.getElementById('select-add-token-a');
+  const selectAddTokenB = document.getElementById('select-add-token-b');
+  const addAmountA = document.getElementById('add-amount-a');
+  const addAmountB = document.getElementById('add-amount-b');
+
+  if (addBtn) addBtn.addEventListener('click', addLiquidity);
+  if (selectAddTokenA) selectAddTokenA.addEventListener('click', () => openTokenModal('addA'));
+  if (selectAddTokenB) selectAddTokenB.addEventListener('click', () => openTokenModal('addB'));
+  if (addAmountA) addAmountA.addEventListener('input', calculateLiquidityB);
+  if (addAmountB) addAmountB.addEventListener('input', calculateLiquidityA);
+
+  // Remove liquidity
+  const removeBtn = document.getElementById('remove-liquidity-btn');
+  const removeSlider = document.getElementById('remove-slider');
+  const presetBtns = document.querySelectorAll('.preset-btn');
+
+  if (removeBtn) removeBtn.addEventListener('click', removeLiquidity);
+  if (removeSlider) removeSlider.addEventListener('input', updateRemoveAmount);
+  
+  presetBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const value = btn.dataset.value;
+      if (removeSlider) {
+        removeSlider.value = value;
+        updateRemoveAmount();
+      }
+    });
+  });
+}
+
+// Wallet Functions
+async function connectWallet() {
+  if (typeof window.ethereum === 'undefined') {
+    alert('MetaMask is not installed. Please install it to use MintonDex.');
+    window.open('https://metamask.io/download/', '_blank');
+    return;
+  }
+
+  try {
+    const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+    currentAccount = accounts[0];
+
+    const chainId = await web3.eth.getChainId();
+    if (Number(chainId) !== 8119) {
+      await switchToShardeum();
+    }
+
+    await updateConnectionStatus();
+    showStatus('Connected successfully!', 'success');
+  } catch (error) {
+    console.error('Connection error:', error);
+    showStatus('Failed to connect wallet', 'error');
+  }
+}
+
+async function disconnectWallet() {
+  currentAccount = null;
+  updateConnectionStatus();
+  showStatus('Wallet disconnected', 'info');
+}
+
+async function switchToShardeum() {
+  try {
+    await window.ethereum.request({
+      method: 'wallet_switchEthereumChain',
+      params: [{ chainId: SHARDEUM_TESTNET.chainId }]
+    });
+  } catch (error) {
+    if (error.code === 4902) {
+      try {
+        await window.ethereum.request({
+          method: 'wallet_addEthereumChain',
+          params: [SHARDEUM_TESTNET]
+        });
+      } catch (addError) {
+        console.error('Error adding network:', addError);
+      }
+    }
+  }
+}
+
+async function handleAccountsChanged(accounts) {
+  if (accounts.length === 0) {
+    currentAccount = null;
+  } else {
+    currentAccount = accounts[0];
+  }
+  await updateConnectionStatus();
+  window.location.reload();
+}
+
+async function updateConnectionStatus() {
+  if (!currentAccount) {
+    if (connectionStatus) connectionStatus.style.display = 'none';
+    if (disconnectButton) disconnectButton.style.display = 'none';
+    if (connectButton) {
+      connectButton.style.display = 'inline-block';
+      connectButton.textContent = 'Connect Wallet';
+    }
+    updateButtonStates();
+    return;
+  }
+
+  const shortAddress = `${currentAccount.slice(0, 6)}...${currentAccount.slice(-4)}`;
+  
+  if (connectionStatus) {
+    connectionStatus.textContent = `Shardeum Testnet | ${shortAddress}`;
+    connectionStatus.style.display = 'inline';
+  }
+  if (disconnectButton) disconnectButton.style.display = 'inline-block';
+  if (connectButton) connectButton.style.display = 'none';
+
+  updateButtonStates();
+  await updateBalances();
+}
+
+function updateButtonStates() {
+  const swapBtn = document.getElementById('swap-btn');
+  const addBtn = document.getElementById('add-liquidity-btn');
+  const removeBtn = document.getElementById('remove-liquidity-btn');
+
+  if (swapBtn) {
+    if (!currentAccount) {
+      swapBtn.textContent = 'Connect Wallet';
+      swapBtn.disabled = false;
+    } else if (!selectedTokenIn || !selectedTokenOut) {
+      swapBtn.textContent = 'Select Tokens';
+      swapBtn.disabled = true;
+    } else {
+      swapBtn.textContent = 'Swap';
+      swapBtn.disabled = false;
+    }
+  }
+
+  if (addBtn) {
+    addBtn.textContent = currentAccount ? 'Add Liquidity' : 'Connect Wallet';
+    addBtn.disabled = !currentAccount;
+  }
+
+  if (removeBtn) {
+    removeBtn.textContent = currentAccount ? 'Remove Liquidity' : 'Connect Wallet';
+    removeBtn.disabled = !currentAccount;
+  }
+}
+
+// Token Functions
+async function loadCommonTokens() {
+  // You can add common tokens here
+  // For now, we'll leave it empty and users can add their own tokens
+  tokenList = [];
+}
+
+function openTokenModal(callback) {
+  currentModalCallback = callback;
+  const modal = document.getElementById('token-modal');
+  modal.classList.add('active');
+  
+  const tokenSearch = document.getElementById('token-search');
+  if (tokenSearch) tokenSearch.value = '';
+  
+  displayTokenList(tokenList);
+}
+
+function displayTokenList(tokens) {
+  const tokenListEl = document.getElementById('token-list');
+  if (!tokenListEl) return;
+
+  if (tokens.length === 0) {
+    tokenListEl.innerHTML = `
+      <div style="text-align: center; padding: 40px; color: #999;">
+        <p>No tokens found. Paste a token address to add it.</p>
+      </div>
+    `;
+    return;
+  }
+
+  tokenListEl.innerHTML = tokens.map(token => `
+    <div class="token-item" onclick="selectToken('${token.address}')">
+      <div class="token-item-info">
+        <div class="token-item-symbol">${token.symbol}</div>
+        <div class="token-item-name">${token.name}</div>
+      </div>
+      ${token.balance ? `<div class="token-item-balance">${token.balance}</div>` : ''}
+    </div>
+  `).join('');
+}
+
+async function filterTokens() {
+  const searchValue = document.getElementById('token-search').value.toLowerCase();
+  
+  if (web3.utils.isAddress(searchValue)) {
+    try {
+      const tokenInfo = await getTokenInfo(searchValue);
+      if (tokenInfo) {
+        displayTokenList([tokenInfo]);
+      }
+    } catch (error) {
+      console.error('Error fetching token:', error);
+    }
+  } else {
+    const filtered = tokenList.filter(token =>
+      token.symbol.toLowerCase().includes(searchValue) ||
+      token.name.toLowerCase().includes(searchValue) ||
+      token.address.toLowerCase().includes(searchValue)
+    );
+    displayTokenList(filtered);
+  }
+}
+
+async function getTokenInfo(address) {
+  try {
+    const tokenContract = new web3.eth.Contract(ERC20_ABI, address);
+    const [name, symbol, decimals] = await Promise.all([
+      tokenContract.methods.name().call(),
+      tokenContract.methods.symbol().call(),
+      tokenContract.methods.decimals().call()
+    ]);
+
+    let balance = '0';
+    if (currentAccount) {
+      const bal = await tokenContract.methods.balanceOf(currentAccount).call();
+      balance = web3.utils.fromWei(bal, 'ether');
+    }
+
+    return { address, name, symbol, decimals: Number(decimals), balance };
+  } catch (error) {
+    console.error('Error getting token info:', error);
+    return null;
+  }
+}
+
+async function selectToken(address) {
+  const tokenInfo = await getTokenInfo(address);
+  if (!tokenInfo) return;
+
+  // Add to token list if not already there
+  if (!tokenList.find(t => t.address.toLowerCase() === address.toLowerCase())) {
+    tokenList.push(tokenInfo);
+  }
+
+  const modal = document.getElementById('token-modal');
+  modal.classList.remove('active');
+
+  if (currentModalCallback === 'in') {
+    selectedTokenIn = tokenInfo;
+    document.getElementById('token-in-symbol').textContent = tokenInfo.symbol;
+    document.getElementById('balance-in').textContent = `Balance: ${parseFloat(tokenInfo.balance).toFixed(4)}`;
+  } else if (currentModalCallback === 'out') {
+    selectedTokenOut = tokenInfo;
+    document.getElementById('token-out-symbol').textContent = tokenInfo.symbol;
+    document.getElementById('balance-out').textContent = `Balance: ${parseFloat(tokenInfo.balance).toFixed(4)}`;
+  } else if (currentModalCallback === 'addA') {
+    window.selectedAddTokenA = tokenInfo;
+    document.getElementById('add-token-a-symbol').textContent = tokenInfo.symbol;
+    document.getElementById('add-balance-a').textContent = `Balance: ${parseFloat(tokenInfo.balance).toFixed(4)}`;
+  } else if (currentModalCallback === 'addB') {
+    window.selectedAddTokenB = tokenInfo;
+    document.getElementById('add-token-b-symbol').textContent = tokenInfo.symbol;
+    document.getElementById('add-balance-b').textContent = `Balance: ${parseFloat(tokenInfo.balance).toFixed(4)}`;
+  }
+
+  updateButtonStates();
+  calculateOutput();
+}
+
+// Swap Functions
+async function calculateOutput() {
+  const inputAmount = document.getElementById('input-amount');
+  const outputAmount = document.getElementById('output-amount');
+  const swapDetails = document.getElementById('swap-details');
+  
+  if (!inputAmount || !outputAmount) return;
+  
+  const amountIn = inputAmount.value;
+  
+  if (!amountIn || !selectedTokenIn || !selectedTokenOut || parseFloat(amountIn) <= 0) {
+    outputAmount.value = '';
+    if (swapDetails) swapDetails.style.display = 'none';
+    return;
+  }
+
+  try {
+    const amountInWei = web3.utils.toWei(amountIn, 'ether');
+    const path = [selectedTokenIn.address, selectedTokenOut.address];
+    
+    const amounts = await routerContract.methods.getAmountsOut(amountInWei, path).call();
+    const amountOut = web3.utils.fromWei(amounts[1], 'ether');
+    
+    outputAmount.value = parseFloat(amountOut).toFixed(6);
+    
+    // Calculate and display swap details
+    const exchangeRate = parseFloat(amountOut) / parseFloat(amountIn);
+    const fee = parseFloat(amountIn) * 0.003;
+    const priceImpact = await calculatePriceImpact(amountInWei, amounts[1], path);
+    
+    document.getElementById('exchange-rate').textContent = `1 ${selectedTokenIn.symbol} = ${exchangeRate.toFixed(6)} ${selectedTokenOut.symbol}`;
+    document.getElementById('price-impact').textContent = `${priceImpact.toFixed(2)}%`;
+    document.getElementById('swap-fee').textContent = `${fee.toFixed(6)} ${selectedTokenIn.symbol}`;
+    
+    if (swapDetails) swapDetails.style.display = 'block';
+  } catch (error) {
+    console.error('Error calculating output:', error);
+    outputAmount.value = '';
+    if (swapDetails) swapDetails.style.display = 'none';
+  }
+}
+
+async function calculatePriceImpact(amountIn, amountOut, path) {
+  try {
+    const reserves = await routerContract.methods.getReserves(path[0], path[1]).call();
+    const reserveIn = reserves.reserveA;
+    const reserveOut = reserves.reserveB;
+    
+    const exactQuote = (BigInt(amountIn) * BigInt(reserveOut)) / BigInt(reserveIn);
+    const priceImpact = ((BigInt(exactQuote) - BigInt(amountOut)) * BigInt(10000)) / BigInt(exactQuote);
+    
+    return Number(priceImpact) / 100;
+  } catch (error) {
+    return 0;
+  }
+}
+
+function flipTokens() {
+  const temp = selectedTokenIn;
+  selectedTokenIn = selectedTokenOut;
+  selectedTokenOut = temp;
+  
+  if (selectedTokenIn) {
+    document.getElementById('token-in-symbol').textContent = selectedTokenIn.symbol;
+    document.getElementById('balance-in').textContent = `Balance: ${parseFloat(selectedTokenIn.balance).toFixed(4)}`;
+  }
+  
+  if (selectedTokenOut) {
+    document.getElementById('token-out-symbol').textContent = selectedTokenOut.symbol;
+    document.getElementById('balance-out').textContent = `Balance: ${parseFloat(selectedTokenOut.balance).toFixed(4)}`;
+  }
+  
+  const inputValue = document.getElementById('input-amount').value;
+  const outputValue = document.getElementById('output-amount').value;
+  
+  document.getElementById('input-amount').value = outputValue;
+  document.getElementById('output-amount').value = inputValue;
+  
+  calculateOutput();
+}
+
+async function setMaxAmount() {
+  if (!selectedTokenIn || !currentAccount) return;
+  
+  try {
+    const tokenContract = new web3.eth.Contract(ERC20_ABI, selectedTokenIn.address);
+    const balance = await tokenContract.methods.balanceOf(currentAccount).call();
+    const balanceInEther = web3.utils.fromWei(balance, 'ether');
+    
+    document.getElementById('input-amount').value = balanceInEther;
+    await calculateOutput();
+  } catch (error) {
+    console.error('Error setting max amount:', error);
+  }
+}
+
+async function executeSwap() {
+  if (!currentAccount) {
+    await connectWallet();
+    return;
+  }
+  
+  if (!selectedTokenIn || !selectedTokenOut) {
+    showStatus('Please select both tokens', 'error', 'status-message');
+    return;
+  }
+  
+  const amountIn = document.getElementById('input-amount').value;
+  
+  if (!amountIn || parseFloat(amountIn) <= 0) {
+    showStatus('Please enter an amount', 'error', 'status-message');
+    return;
+  }
+  
+  try {
+    showStatus('Preparing swap...', 'info', 'status-message');
+    
+    const amountInWei = web3.utils.toWei(amountIn, 'ether');
+    const path = [selectedTokenIn.address, selectedTokenOut.address];
+    const amounts = await routerContract.methods.getAmountsOut(amountInWei, path).call();
+    const amountOutMin = (BigInt(amounts[1]) * BigInt(95)) / BigInt(100); // 5% slippage
+    const deadline = Math.floor(Date.now() / 1000) + 60 * 20; // 20 minutes
+    
+    // Check and approve token
+    const tokenContract = new web3.eth.Contract(ERC20_ABI, selectedTokenIn.address);
+    const allowance = await tokenContract.methods.allowance(currentAccount, ROUTER_ADDRESS).call();
+    
+    if (BigInt(allowance) < BigInt(amountInWei)) {
+      showStatus('Approving token...', 'info', 'status-message');
+      await tokenContract.methods.approve(ROUTER_ADDRESS, amountInWei).send({
+        from: currentAccount,
+        maxFeePerGas: web3.utils.toWei('2500000', 'gwei'),
+        maxPriorityFeePerGas: web3.utils.toWei('2500000', 'gwei'),
+        gas: 100000
+      });
+    }
+    
+    showStatus('Swapping tokens...', 'info', 'status-message');
+    
+    const tx = await routerContract.methods.swapExactTokensForTokens(
+      amountInWei,
+      amountOutMin.toString(),
+      path,
+      currentAccount,
+      deadline
+    ).send({
+      from: currentAccount,
+      maxFeePerGas: web3.utils.toWei('2500000', 'gwei'),
+      maxPriorityFeePerGas: web3.utils.toWei('2500000', 'gwei'),
+      gas: 300000
+    });
+    
+    showStatus(`Swap successful! <a href="https://explorer-mezame.shardeum.org/tx/${tx.transactionHash}" target="_blank">View Transaction</a>`, 'success', 'status-message');
+    
+    // Clear inputs and refresh balances
+    document.getElementById('input-amount').value = '';
+    document.getElementById('output-amount').value = '';
+    await updateBalances();
+    
+  } catch (error) {
+    console.error('Swap error:', error);
+    showStatus(error.message || 'Swap failed', 'error', 'status-message');
+  }
+}
+
+// Liquidity Functions
+async function calculateLiquidityB() {
+  const amountA = document.getElementById('add-amount-a')?.value;
+  const amountB = document.getElementById('add-amount-b');
+  
+  if (!amountA || !window.selectedAddTokenA || !window.selectedAddTokenB || parseFloat(amountA) <= 0) {
+    if (amountB) amountB.value = '';
+    return;
+  }
+  
+  try {
+    const reserves = await routerContract.methods.getReserves(
+      window.selectedAddTokenA.address,
+      window.selectedAddTokenB.address
+    ).call();
+    
+    if (reserves.reserveA === '0' || reserves.reserveB === '0') {
+      // New pool - user can set any ratio
+      return;
+    }
+    
+    const amountAWei = web3.utils.toWei(amountA, 'ether');
+    const optimalB = (BigInt(amountAWei) * BigInt(reserves.reserveB)) / BigInt(reserves.reserveA);
+    
+    if (amountB) {
+      amountB.value = web3.utils.fromWei(optimalB.toString(), 'ether');
+    }
+  } catch (error) {
+    console.error('Error calculating liquidity B:', error);
+  }
+}
+
+async function calculateLiquidityA() {
+  const amountB = document.getElementById('add-amount-b')?.value;
+  const amountA = document.getElementById('add-amount-a');
+  
+  if (!amountB || !window.selectedAddTokenA || !window.selectedAddTokenB || parseFloat(amountB) <= 0) {
+    if (amountA) amountA.value = '';
+    return;
+  }
+  
+  try {
+    const reserves = await routerContract.methods.getReserves(
+      window.selectedAddTokenA.address,
+      window.selectedAddTokenB.address
+    ).call();
+    
+    if (reserves.reserveA === '0' || reserves.reserveB === '0') {
+      return;
+    }
+    
+    const amountBWei = web3.utils.toWei(amountB, 'ether');
+    const optimalA = (BigInt(amountBWei) * BigInt(reserves.reserveA)) / BigInt(reserves.reserveB);
+    
+    if (amountA) {
+      amountA.value = web3.utils.fromWei(optimalA.toString(), 'ether');
+    }
+  } catch (error) {
+    console.error('Error calculating liquidity A:', error);
+  }
+}
+
+async function addLiquidity() {
+  if (!currentAccount) {
+    await connectWallet();
+    return;
+  }
+  
+  if (!window.selectedAddTokenA || !window.selectedAddTokenB) {
+    showStatus('Please select both tokens', 'error', 'add-status');
+    return;
+  }
+  
+  const amountA = document.getElementById('add-amount-a').value;
+  const amountB = document.getElementById('add-amount-b').value;
+  
+  if (!amountA || !amountB || parseFloat(amountA) <= 0 || parseFloat(amountB) <= 0) {
+    showStatus('Please enter valid amounts', 'error', 'add-status');
+    return;
+  }
+  
+  try {
+    showStatus('Preparing to add liquidity...', 'info', 'add-status');
+    
+    const amountAWei = web3.utils.toWei(amountA, 'ether');
+    const amountBWei = web3.utils.toWei(amountB, 'ether');
+    const amountAMin = (BigInt(amountAWei) * BigInt(95)) / BigInt(100);
+    const amountBMin = (BigInt(amountBWei) * BigInt(95)) / BigInt(100);
+    const deadline = Math.floor(Date.now() / 1000) + 60 * 20;
+    
+    // Approve Token A
+    const tokenAContract = new web3.eth.Contract(ERC20_ABI, window.selectedAddTokenA.address);
+    const allowanceA = await tokenAContract.methods.allowance(currentAccount, ROUTER_ADDRESS).call();
+    
+    if (BigInt(allowanceA) < BigInt(amountAWei)) {
+      showStatus('Approving Token A...', 'info', 'add-status');
+      await tokenAContract.methods.approve(ROUTER_ADDRESS, amountAWei).send({
+        from: currentAccount,
+        maxFeePerGas: web3.utils.toWei('2500000', 'gwei'),
+        maxPriorityFeePerGas: web3.utils.toWei('2500000', 'gwei'),
+        gas: 100000
+      });
+    }
+    
+    // Approve Token B
+    const tokenBContract = new web3.eth.Contract(ERC20_ABI, window.selectedAddTokenB.address);
+    const allowanceB = await tokenBContract.methods.allowance(currentAccount, ROUTER_ADDRESS).call();
+    
+    if (BigInt(allowanceB) < BigInt(amountBWei)) {
+      showStatus('Approving Token B...', 'info', 'add-status');
+      await tokenBContract.methods.approve(ROUTER_ADDRESS, amountBWei).send({
+        from: currentAccount,
+        maxFeePerGas: web3.utils.toWei('2500000', 'gwei'),
+        maxPriorityFeePerGas: web3.utils.toWei('2500000', 'gwei'),
+        gas: 100000
+      });
+    }
+    
+    showStatus('Adding liquidity...', 'info', 'add-status');
+    
+    const tx = await routerContract.methods.addLiquidity(
+      window.selectedAddTokenA.address,
+      window.selectedAddTokenB.address,
+      amountAWei,
+      amountBWei,
+      amountAMin.toString(),
+      amountBMin.toString(),
+      currentAccount,
+      deadline
+    ).send({
+      from: currentAccount,
+      maxFeePerGas: web3.utils.toWei('2500000', 'gwei'),
+      maxPriorityFeePerGas: web3.utils.toWei('2500000', 'gwei'),
+      gas: 500000
+    });
+    
+    showStatus(`Liquidity added successfully! <a href="https://explorer-mezame.shardeum.org/tx/${tx.transactionHash}" target="_blank">View Transaction</a>`, 'success', 'add-status');
+    
+    // Clear inputs
+    document.getElementById('add-amount-a').value = '';
+    document.getElementById('add-amount-b').value = '';
+    await updateBalances();
+    await loadUserPositions();
+    
+  } catch (error) {
+    console.error('Add liquidity error:', error);
+    showStatus(error.message || 'Failed to add liquidity', 'error', 'add-status');
+  }
+}
+
+async function removeLiquidity() {
+  if (!currentAccount) {
+    await connectWallet();
+    return;
+  }
+  
+  const pairSelect = document.getElementById('pair-select');
+  const removeSlider = document.getElementById('remove-slider');
+  
+  if (!pairSelect || !pairSelect.value) {
+    showStatus('Please select a liquidity pair', 'error', 'remove-status');
+    return;
+  }
+  
+  const percentage = parseInt(removeSlider.value);
+  if (percentage === 0) {
+    showStatus('Please select an amount to remove', 'error', 'remove-status');
+    return;
+  }
+  
+  try {
+    showStatus('Preparing to remove liquidity...', 'info', 'remove-status');
+    
+    const pairAddress = pairSelect.value;
+    const pairContract = new web3.eth.Contract(PAIR_ABI, pairAddress);
+    
+    const lpBalance = await pairContract.methods.balanceOf(currentAccount).call();
+    const liquidityToRemove = (BigInt(lpBalance) * BigInt(percentage)) / BigInt(100);
+    
+    const token0 = await pairContract.methods.token0().call();
+    const token1 = await pairContract.methods.token1().call();
+    
+    const deadline = Math.floor(Date.now() / 1000) + 60 * 20;
+    
+    // Approve LP tokens
+    const allowance = await pairContract.methods.allowance(currentAccount, ROUTER_ADDRESS).call();
+    
+    if (BigInt(allowance) < BigInt(liquidityToRemove)) {
+      showStatus('Approving LP tokens...', 'info', 'remove-status');
+      await pairContract.methods.approve(ROUTER_ADDRESS, liquidityToRemove.toString()).send({
+        from: currentAccount,
+        maxFeePerGas: web3.utils.toWei('2500000', 'gwei'),
+        maxPriorityFeePerGas: web3.utils.toWei('2500000', 'gwei'),
+        gas: 100000
+      });
+    }
+    
+    showStatus('Removing liquidity...', 'info', 'remove-status');
+    
+    const tx = await routerContract.methods.removeLiquidity(
+      token0,
+      token1,
+      liquidityToRemove.toString(),
+      '0',
+      '0',
+      currentAccount,
+      deadline
+    ).send({
+      from: currentAccount,
+      maxFeePerGas: web3.utils.toWei('2500000', 'gwei'),
+      maxPriorityFeePerGas: web3.utils.toWei('2500000', 'gwei'),
+      gas: 500000
+    });
+    
+    showStatus(`Liquidity removed successfully! <a href="https://explorer-mezame.shardeum.org/tx/${tx.transactionHash}" target="_blank">View Transaction</a>`, 'success', 'remove-status');
+    
+    // Reset slider
+    removeSlider.value = 0;
+    updateRemoveAmount();
+    await loadUserPositions();
+    
+  } catch (error) {
+    console.error('Remove liquidity error:', error);
+    showStatus(error.message || 'Failed to remove liquidity', 'error', 'remove-status');
+  }
+}
+
+function updateRemoveAmount() {
+  const slider = document.getElementById('remove-slider');
+  const percentage = document.getElementById('remove-percentage');
+  
+  if (slider && percentage) {
+    percentage.textContent = slider.value;
+  }
+}
+
+async function loadUserPositions() {
+  if (!currentAccount) return;
+  
+  const positionsContainer = document.getElementById('positions-container');
+  if (!positionsContainer) return;
+  
+  try {
+    positionsContainer.innerHTML = '<div class="loading" style="text-align: center; padding: 40px;">Loading positions...</div>';
+    
+    // This is a simplified version - in production you'd want to track user's positions
+    const pairCount = await factoryContract.methods.allPairsLength().call();
+    const positions = [];
+    
+    // For demo purposes, we'll just show a message
+    // In production, you'd iterate through pairs and check balances
+    
+    positionsContainer.innerHTML = `
+      <div class="no-positions">
+        <p>You have ${positions.length} liquidity position(s)</p>
+        <p style="margin-top: 10px; font-size: 0.9rem; color: #666;">Add liquidity to create your first position</p>
+      </div>
+    `;
+    
+  } catch (error) {
+    console.error('Error loading positions:', error);
+    positionsContainer.innerHTML = '<div class="no-positions"><p>Error loading positions</p></div>';
+  }
+}
+
+// Utility Functions
+function switchTab(tabName) {
+  const tabBtns = document.querySelectorAll('.tab-btn');
+  const tabContents = document.querySelectorAll('.tab-content');
+  
+  tabBtns.forEach(btn => btn.classList.remove('active'));
+  tabContents.forEach(content => content.classList.remove('active'));
+  
+  const activeBtn = document.querySelector(`[data-tab="${tabName}"]`);
+  const activeContent = document.getElementById(`${tabName}-tab`);
+  
+  if (activeBtn) activeBtn.classList.add('active');
+  if (activeContent) activeContent.classList.add('active');
+  
+  if (tabName === 'positions') {
+    loadUserPositions();
+  }
+}
+
+async function updateBalances() {
+  if (!currentAccount) return;
+  
+  if (selectedTokenIn) {
+    const tokenContract = new web3.eth.Contract(ERC20_ABI, selectedTokenIn.address);
+    const balance = await tokenContract.methods.balanceOf(currentAccount).call();
+    selectedTokenIn.balance = web3.utils.fromWei(balance, 'ether');
+    document.getElementById('balance-in').textContent = `Balance: ${parseFloat(selectedTokenIn.balance).toFixed(4)}`;
+  }
+  
+  if (selectedTokenOut) {
+    const tokenContract = new web3.eth.Contract(ERC20_ABI, selectedTokenOut.address);
+    const balance = await tokenContract.methods.balanceOf(currentAccount).call();
+    selectedTokenOut.balance = web3.utils.fromWei(balance, 'ether');
+    document.getElementById('balance-out').textContent = `Balance: ${parseFloat(selectedTokenOut.balance).toFixed(4)}`;
+  }
+}
+
+function showStatus(message, type, elementId = 'status-message') {
+  const statusEl = document.getElementById(elementId);
+  if (!statusEl) return;
+  
+  statusEl.innerHTML = message;
+  statusEl.className = `status-message ${type}`;
+  statusEl.style.display = 'block';
+  
+  if (type === 'success') {
+    setTimeout(() => {
+      statusEl.style.display = 'none';
+    }, 10000);
+  }
+}
+
+// Make functions globally accessible for onclick handlers
+window.selectToken = selectToken;
+window.loadTokens = loadCommonTokens;

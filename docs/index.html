@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MintonDex - Decentralized Exchange</title>
+    <meta name="description" content="Swap tokens instantly on Shardeum blockchain with MintonDex">
+    <link rel="stylesheet" href="assets/css/styles.css">
+    <link rel="icon" href="assets/images/mintonshardeum_favicon.png">
+</head>
+<body>
+    <header>
+        <div class="header-title">MintonDex</div>
+        <nav>
+            <a href="index.html">Swap</a>
+            <a href="pool.html">Pool</a>
+            <a href="https://mintonshardeum.com" target="_blank">Create Token</a>
+            <div id="wallet-info" class="wallet-info">
+                <button id="connect-metamask">Connect Wallet</button>
+                <span id="connection-status" style="display: none;"></span>
+                <button id="disconnect-metamask" style="display: none;">Disconnect</button>
+            </div>
+        </nav>
+    </header>
+    <main>
+        <section class="logo-section">
+            <img src="assets/images/mintonshardeum_logo.png" alt="MintonDex Logo" class="main-logo">
+        </section>
+        <section class="swap-container">
+            <h1>Swap Tokens</h1>
+            <p>Trade tokens instantly on Shardeum</p>
+            
+            <div class="swap-box">
+                <div class="token-input-group">
+                    <label>From</label>
+                    <div class="input-row">
+                        <input type="text" id="input-amount" placeholder="0.0" class="amount-input">
+                        <button class="token-select" id="select-token-in">
+                            <span id="token-in-symbol">Select Token</span>
+                        </button>
+                    </div>
+                    <div class="balance-row">
+                        <span id="balance-in">Balance: 0.00</span>
+                        <button class="max-btn" id="max-btn">MAX</button>
+                    </div>
+                </div>
+
+                <div class="swap-arrow">
+                    <button id="swap-direction">⇅</button>
+                </div>
+
+                <div class="token-input-group">
+                    <label>To</label>
+                    <div class="input-row">
+                        <input type="text" id="output-amount" placeholder="0.0" class="amount-input" readonly>
+                        <button class="token-select" id="select-token-out">
+                            <span id="token-out-symbol">Select Token</span>
+                        </button>
+                    </div>
+                    <div class="balance-row">
+                        <span id="balance-out">Balance: 0.00</span>
+                    </div>
+                </div>
+
+                <div class="swap-details" id="swap-details" style="display: none;">
+                    <div class="detail-row">
+                        <span>Exchange Rate:</span>
+                        <span id="exchange-rate">-</span>
+                    </div>
+                    <div class="detail-row">
+                        <span>Price Impact:</span>
+                        <span id="price-impact">-</span>
+                    </div>
+                    <div class="detail-row">
+                        <span>Fee (0.3%):</span>
+                        <span id="swap-fee">-</span>
+                    </div>
+                </div>
+
+                <button class="action-btn" id="swap-btn">Connect Wallet</button>
+                <div id="status-message" class="status-message"></div>
+            </div>
+
+            <div class="info-section" style="margin-top: 30px; text-align: center;">
+                <p style="color: #666; font-size: 0.9rem;">
+                    <strong>New to MintonDex?</strong> Create your own tokens on 
+                    <a href="https://mintonshardeum.com" target="_blank" style="color: #667eea; text-decoration: underline;">MintonShardeum</a>
+                    and start trading here!
+                </p>
+            </div>
+        </section>
+
+        <!-- Token Selection Modal -->
+        <div id="token-modal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>Select a Token</h2>
+                    <button class="close-modal">&times;</button>
+                </div>
+                <input type="text" id="token-search" placeholder="Search by name or paste address..." class="token-search">
+                <div class="common-tokens" id="common-tokens" style="display: none;">
+                    <div class="common-token-label">Common Tokens</div>
+                    <div id="common-tokens-list"></div>
+                </div>
+                <div class="token-list" id="token-list">
+                    <div style="text-align: center; padding: 40px; color: #999;">
+                        <p>Paste a token address to add it</p>
+                        <p style="margin-top: 10px; font-size: 0.85rem;">
+                            Create tokens on <a href="https://mintonshardeum.com" target="_blank" style="color: #667eea;">MintonShardeum</a>
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+    <footer>
+        <div class="social-links">
+            <a href="https://discord.com/invite/shardeum" target="_blank"><img src="assets/images/discord.svg" alt="Discord"></a>
+            <a href="https://github.com/BrunoMarshall/MintonDex" target="_blank"><img src="assets/images/github.svg" alt="GitHub"></a>
+            <a href="https://www.linkedin.com/company/shardeum" target="_blank"><img src="assets/images/linkedin.svg" alt="LinkedIn"></a>
+            <a href="https://t.me/shardeum" target="_blank"><img src="assets/images/telegram.svg" alt="Telegram"></a>
+            <a href="https://twitter.com/shardeum" target="_blank"><img src="assets/images/twitter.svg" alt="Twitter"></a>
+            <a href="https://www.youtube.com/@shardeum" target="_blank"><img src="assets/images/youtube.svg" alt="YouTube"></a>
+        </div>
+        <div style="margin-top: 15px;">
+            <a href="https://mintonshardeum.com" target="_blank" style="color: #667eea; text-decoration: none; font-weight: 600;">MintonShardeum</a>
+            <span style="margin: 0 10px; color: #999;">|</span>
+            <a href="https://explorer-mezame.shardeum.org/" target="_blank" style="color: #667eea; text-decoration: none;">Explorer</a>
+        </div>
+        <img src="assets/images/Shardeum_logo_white.png" alt="Shardeum Logo" class="shardeum-logo" style="margin-top: 15px;">
+    </footer>
+    <script src="assets/js/web3.min.js"></script>
+    <script src="assets/js/app.js"></script>
+</body>
+</html>
