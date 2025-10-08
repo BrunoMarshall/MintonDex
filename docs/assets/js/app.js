@@ -871,17 +871,10 @@ async function addLiquidity() {
   }
   
   try {
-    showStatus('Preparing to add liquidity...', 'info', 'add-status');
+    showStatus('Checking balances...', 'info', 'add-status');
     
     const amountAWei = web3.utils.toWei(amountA, 'ether');
     const amountBWei = web3.utils.toWei(amountB, 'ether');
-    
-    // More lenient slippage - 5% instead of 5%
-    const amountAMin = (BigInt(amountAWei) * BigInt(90)) / BigInt(100); // 10% slippage
-    const amountBMin = (BigInt(amountBWei) * BigInt(90)) / BigInt(100); // 10% slippage
-    
-    // Longer deadline - 30 minutes instead of 20
-    const deadline = Math.floor(Date.now() / 1000) + 60 * 30;
     
     const tokenAContract = new web3.eth.Contract(ERC20_ABI, window.selectedAddTokenA.address);
     const tokenBContract = new web3.eth.Contract(ERC20_ABI, window.selectedAddTokenB.address);
@@ -890,58 +883,120 @@ async function addLiquidity() {
     const balanceA = await tokenAContract.methods.balanceOf(currentAccount).call();
     const balanceB = await tokenBContract.methods.balanceOf(currentAccount).call();
     
+    console.log('Balance A:', web3.utils.fromWei(balanceA, 'ether'));
+    console.log('Balance B:', web3.utils.fromWei(balanceB, 'ether'));
+    console.log('Needed A:', amountA);
+    console.log('Needed B:', amountB);
+    
     if (BigInt(balanceA) < BigInt(amountAWei)) {
-      showStatus(`Insufficient ${window.selectedAddTokenA.symbol} balance`, 'error', 'add-status');
+      showStatus(`Insufficient ${window.selectedAddTokenA.symbol} balance. You have ${web3.utils.fromWei(balanceA, 'ether')}, need ${amountA}`, 'error', 'add-status');
       return;
     }
     
     if (BigInt(balanceB) < BigInt(amountBWei)) {
-      showStatus(`Insufficient ${window.selectedAddTokenB.symbol} balance`, 'error', 'add-status');
+      showStatus(`Insufficient ${window.selectedAddTokenB.symbol} balance. You have ${web3.utils.fromWei(balanceB, 'ether')}, need ${amountB}`, 'error', 'add-status');
       return;
     }
     
-    // Approve Token A with higher amount for safety
-    const approvalAmountA = (BigInt(amountAWei) * BigInt(110)) / BigInt(100); // 10% extra
-    showStatus(`Approving ${window.selectedAddTokenA.symbol}...`, 'info', 'add-status');
+    // Use MAX uint256 for approvals to avoid issues
+    const MAX_UINT256 = '115792089237316195423570985008687907853269984665640564039457584007913129639935';
     
+    // Check and approve Token A
+    showStatus(`Checking ${window.selectedAddTokenA.symbol} approval...`, 'info', 'add-status');
     const allowanceA = await tokenAContract.methods.allowance(currentAccount, ROUTER_ADDRESS).call();
+    console.log('Current allowance A:', web3.utils.fromWei(allowanceA, 'ether'));
     
     if (BigInt(allowanceA) < BigInt(amountAWei)) {
-      const approvalTxA = await tokenAContract.methods.approve(ROUTER_ADDRESS, approvalAmountA.toString()).send({
-        from: currentAccount,
-        maxFeePerGas: web3.utils.toWei('2500000', 'gwei'),
-        maxPriorityFeePerGas: web3.utils.toWei('2500000', 'gwei'),
-        gas: 100000
-      });
+      showStatus(`Approving ${window.selectedAddTokenA.symbol}... (Please confirm in MetaMask)`, 'info', 'add-status');
       
-      console.log('Token A approved:', approvalTxA.transactionHash);
-      // Wait a bit for blockchain to process
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      try {
+        const approveTxA = await tokenAContract.methods.approve(ROUTER_ADDRESS, MAX_UINT256).send({
+          from: currentAccount,
+          maxFeePerGas: web3.utils.toWei('3000000', 'gwei'),
+          maxPriorityFeePerGas: web3.utils.toWei('3000000', 'gwei'),
+          gas: 100000
+        });
+        
+        console.log('Token A approved:', approveTxA.transactionHash);
+        showStatus(`${window.selectedAddTokenA.symbol} approved! Waiting for confirmation...`, 'info', 'add-status');
+        
+        // Wait for blockchain to confirm
+        await new Promise(resolve => setTimeout(resolve, 3000));
+      } catch (error) {
+        console.error('Approval A failed:', error);
+        showStatus(`Failed to approve ${window.selectedAddTokenA.symbol}: ${error.message}`, 'error', 'add-status');
+        return;
+      }
+    } else {
+      console.log('Token A already approved');
     }
     
-    // Approve Token B with higher amount for safety
-    const approvalAmountB = (BigInt(amountBWei) * BigInt(110)) / BigInt(100); // 10% extra
-    showStatus(`Approving ${window.selectedAddTokenB.symbol}...`, 'info', 'add-status');
-    
+    // Check and approve Token B
+    showStatus(`Checking ${window.selectedAddTokenB.symbol} approval...`, 'info', 'add-status');
     const allowanceB = await tokenBContract.methods.allowance(currentAccount, ROUTER_ADDRESS).call();
+    console.log('Current allowance B:', web3.utils.fromWei(allowanceB, 'ether'));
     
     if (BigInt(allowanceB) < BigInt(amountBWei)) {
-      const approvalTxB = await tokenBContract.methods.approve(ROUTER_ADDRESS, approvalAmountB.toString()).send({
-        from: currentAccount,
-        maxFeePerGas: web3.utils.toWei('2500000', 'gwei'),
-        maxPriorityFeePerGas: web3.utils.toWei('2500000', 'gwei'),
-        gas: 100000
-      });
+      showStatus(`Approving ${window.selectedAddTokenB.symbol}... (Please confirm in MetaMask)`, 'info', 'add-status');
       
-      console.log('Token B approved:', approvalTxB.transactionHash);
-      // Wait a bit for blockchain to process
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      try {
+        const approveTxB = await tokenBContract.methods.approve(ROUTER_ADDRESS, MAX_UINT256).send({
+          from: currentAccount,
+          maxFeePerGas: web3.utils.toWei('3000000', 'gwei'),
+          maxPriorityFeePerGas: web3.utils.toWei('3000000', 'gwei'),
+          gas: 100000
+        });
+        
+        console.log('Token B approved:', approveTxB.transactionHash);
+        showStatus(`${window.selectedAddTokenB.symbol} approved! Waiting for confirmation...`, 'info', 'add-status');
+        
+        // Wait for blockchain to confirm
+        await new Promise(resolve => setTimeout(resolve, 3000));
+      } catch (error) {
+        console.error('Approval B failed:', error);
+        showStatus(`Failed to approve ${window.selectedAddTokenB.symbol}: ${error.message}`, 'error', 'add-status');
+        return;
+      }
+    } else {
+      console.log('Token B already approved');
     }
     
-    showStatus('Adding liquidity... (This may take a moment)', 'info', 'add-status');
+    // Verify approvals before proceeding
+    const finalAllowanceA = await tokenAContract.methods.allowance(currentAccount, ROUTER_ADDRESS).call();
+    const finalAllowanceB = await tokenBContract.methods.allowance(currentAccount, ROUTER_ADDRESS).call();
     
-    // Updated deadline after approvals
-    const finalDeadline = Math.floor(Date.now() / 1000) + 60 * 30;
+    console.log('Final allowance A:', web3.utils.fromWei(finalAllowanceA, 'ether'));
+    console.log('Final allowance B:', web3.utils.fromWei(finalAllowanceB, 'ether'));
+    
+    if (BigInt(finalAllowanceA) < BigInt(amountAWei)) {
+      showStatus(`Approval verification failed for ${window.selectedAddTokenA.symbol}. Please try again.`, 'error', 'add-status');
+      return;
+    }
+    
+    if (BigInt(finalAllowanceB) < BigInt(amountBWei)) {
+      showStatus(`Approval verification failed for ${window.selectedAddTokenB.symbol}. Please try again.`, 'error', 'add-status');
+      return;
+    }
+    
+    // Calculate minimum amounts with 15% slippage (more lenient)
+    const amountAMin = (BigInt(amountAWei) * BigInt(85)) / BigInt(100);
+    const amountBMin = (BigInt(amountBWei) * BigInt(85)) / BigInt(100);
+    
+    // Longer deadline
+    const deadline = Math.floor(Date.now() / 1000) + 60 * 30; // 30 minutes
+    
+    showStatus('Adding liquidity... (Please confirm in MetaMask)', 'info', 'add-status');
+    
+    console.log('Calling addLiquidity with:', {
+      tokenA: window.selectedAddTokenA.address,
+      tokenB: window.selectedAddTokenB.address,
+      amountA: amountA,
+      amountB: amountB,
+      amountAMin: web3.utils.fromWei(amountAMin.toString(), 'ether'),
+      amountBMin: web3.utils.fromWei(amountBMin.toString(), 'ether'),
+      to: currentAccount,
+      deadline: new Date(deadline * 1000).toLocaleString()
+    });
     
     const tx = await routerContract.methods.addLiquidity(
       window.selectedAddTokenA.address,
@@ -951,15 +1006,17 @@ async function addLiquidity() {
       amountAMin.toString(),
       amountBMin.toString(),
       currentAccount,
-      finalDeadline
+      deadline
     ).send({
       from: currentAccount,
-      maxFeePerGas: web3.utils.toWei('2500000', 'gwei'),
-      maxPriorityFeePerGas: web3.utils.toWei('2500000', 'gwei'),
-      gas: 600000 // Increased gas limit
+      maxFeePerGas: web3.utils.toWei('3000000', 'gwei'),
+      maxPriorityFeePerGas: web3.utils.toWei('3000000', 'gwei'),
+      gas: 700000 // Increased gas limit
     });
     
-    showStatus(`Liquidity added successfully! <a href="https://explorer-mezame.shardeum.org/tx/${tx.transactionHash}" target="_blank">View Transaction</a>`, 'success', 'add-status');
+    console.log('Add liquidity success:', tx);
+    
+    showStatus(`Liquidity added successfully! 🎉 <a href="https://explorer-mezame.shardeum.org/tx/${tx.transactionHash}" target="_blank">View Transaction</a>`, 'success', 'add-status');
     
     document.getElementById('add-amount-a').value = '';
     document.getElementById('add-amount-b').value = '';
@@ -969,18 +1026,25 @@ async function addLiquidity() {
   } catch (error) {
     console.error('Add liquidity error:', error);
     
-    // Better error messages
+    // Detailed error messages
     let errorMsg = 'Failed to add liquidity';
+    
     if (error.message.includes('insufficient funds')) {
-      errorMsg = 'Insufficient SHM for gas fees';
+      errorMsg = 'Insufficient SHM for gas fees. You need at least 2000 SHM for gas.';
     } else if (error.message.includes('INSUFFICIENT_A_AMOUNT')) {
-      errorMsg = 'Token A amount too low for current pool ratio';
+      errorMsg = `Insufficient ${window.selectedAddTokenA.symbol} amount for current pool ratio. Try adjusting amounts.`;
     } else if (error.message.includes('INSUFFICIENT_B_AMOUNT')) {
-      errorMsg = 'Token B amount too low for current pool ratio';
+      errorMsg = `Insufficient ${window.selectedAddTokenB.symbol} amount for current pool ratio. Try adjusting amounts.`;
     } else if (error.message.includes('EXPIRED')) {
       errorMsg = 'Transaction expired. Please try again.';
     } else if (error.message.includes('user rejected')) {
-      errorMsg = 'Transaction rejected by user';
+      errorMsg = 'Transaction cancelled by user.';
+    } else if (error.message.includes('transfer amount exceeds balance')) {
+      errorMsg = 'Token balance insufficient. Please check your balances.';
+    } else if (error.message.includes('transfer amount exceeds allowance')) {
+      errorMsg = 'Approval issue detected. Please try again or refresh the page.';
+    } else {
+      errorMsg = `Error: ${error.message}`;
     }
     
     showStatus(errorMsg, 'error', 'add-status');
