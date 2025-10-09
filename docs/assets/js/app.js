@@ -1,8 +1,8 @@
 const web3 = new Web3(window.ethereum);
 
 // Contract Addresses
-const FACTORY_ADDRESS = "0x026d5b414b44b8214ee41e1966538b9061083402";
-const ROUTER_ADDRESS = "0x2db6097b08b2bc1fcdb445e9d2947fe14791eebe";
+const FACTORY_ADDRESS = "0x1b5737e10f67bb6ac6355c35391cbab1a55ce98e";
+const ROUTER_ADDRESS = "0x1e8d49cb519a1c5a9ee461c900b93b3eef011de5";
 const WSHM_ADDRESS = "0x9988864cb024f0a647c205dbbf96535b0072f40b";
 
 // ABIs
@@ -757,8 +757,8 @@ async function executeSwap() {
       showStatus('Approving token...', 'info', 'status-message');
       await tokenContract.methods.approve(ROUTER_ADDRESS, amountInWei).send({
         from: currentAccount,
-        maxFeePerGas: web3.utils.toWei('2500000', 'gwei'),
-        maxPriorityFeePerGas: web3.utils.toWei('2500000', 'gwei'),
+        maxFeePerGas: web3.utils.toWei('2500', 'gwei'),
+        maxPriorityFeePerGas: web3.utils.toWei('2500', 'gwei'),
         gas: 100000
       });
     }
