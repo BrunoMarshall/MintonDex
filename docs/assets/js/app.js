@@ -1011,7 +1011,7 @@ async function addLiquidity() {
       from: currentAccount,
       maxFeePerGas: web3.utils.toWei('3000000', 'gwei'),
       maxPriorityFeePerGas: web3.utils.toWei('3000000', 'gwei'),
-      gas: 700000 // Increased gas limit
+      gas: 3000000 // Increased gas limit
     });
     
     console.log('Add liquidity success:', tx);
