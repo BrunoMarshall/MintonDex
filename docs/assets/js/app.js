@@ -11,7 +11,7 @@ const SHM_TOKEN = {
   name: 'Shardeum',
   symbol: 'SHM',
   decimals: 18,
-  logoURI: 'https://raw.githubusercontent.com/Shardeum/shardeum-website/main/public/shardeum-logo.svg',
+  logoURI: 'https://raw.githubusercontent.com/BrunoMarshall/MintonDex/main/logos/shm.png',
   isNative: true
 };
 
