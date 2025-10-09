@@ -1,698 +1,4 @@
-try {
-    const amountInWei = web3.utils.toWei(amountIn, 'ether');
-    
-    let path;
-    if (selectedTokenIn.isNative) {
-      path = [WSHM_ADDRESS, selectedTokenOut.address];
-    } else if (selectedTokenOut.isNative) {
-      path = [selectedTokenIn.address, WSHM_ADDRESS];
-    } else {
-      path = [selectedTokenIn.address, selectedTokenOut.address];
-    }
-    
-    const amounts = await routerContract.methods.getAmountsOut(amountInWei, path).call();
-    const amountOut = web3.utils.fromWei(amounts[1], 'ether');
-    
-    outputAmount.value = parseFloat(amountOut).toFixed(6);
-    
-    const exchangeRate = parseFloat(amountOut) / parseFloat(amountIn);
-    const fee = parseFloat(amountIn) * 0.01;
-    const priceImpact = await calculatePriceImpact(amountInWei, amounts[1], path);
-    
-    document.getElementById('exchange-rate').textContent = `1 ${selectedTokenIn.symbol} = ${exchangeRate.toFixed(6)} ${selectedTokenOut.symbol}`;
-    document.getElementById('price-impact').textContent = `${priceImpact.toFixed(2)}%`;
-    document.getElementById('swap-fee').textContent = `${fee.toFixed(6)} ${selectedTokenIn.symbol}`;
-    
-    if (swapDetails) swapDetails.style.display = 'block';
-  } catch (error) {
-    console.error('Error calculating output:', error);
-    outputAmount.value = '';
-    if (swapDetails) swapDetails.style.display = 'none';
-  }
-}
-
-async function calculatePriceImpact(amountIn, amountOut, path) {
-  try {
-    const reserves = await routerContract.methods.getReserves(path[0], path[1]).call();
-    const reserveIn = reserves.reserveA;
-    const reserveOut = reserves.reserveB;
-    
-    const exactQuote = (BigInt(amountIn) * BigInt(reserveOut)) / BigInt(reserveIn);
-    const priceImpact = ((BigInt(exactQuote) - BigInt(amountOut)) * BigInt(10000)) / BigInt(exactQuote);
-    
-    return Number(priceImpact) / 100;
-  } catch (error) {
-    return 0;
-  }
-}
-
-function flipTokens() {
-  const temp = selectedTokenIn;
-  selectedTokenIn = selectedTokenOut;
-  selectedTokenOut = temp;
-  
-  if (selectedTokenIn) {
-    document.getElementById('token-in-symbol').textContent = selectedTokenIn.symbol;
-    document.getElementById('balance-in').textContent = `Balance: ${parseFloat(selectedTokenIn.balance || 0).toFixed(4)}`;
-  }
-  
-  if (selectedTokenOut) {
-    document.getElementById('token-out-symbol').textContent = selectedTokenOut.symbol;
-    document.getElementById('balance-out').textContent = `Balance: ${parseFloat(selectedTokenOut.balance || 0).toFixed(4)}`;
-  }
-  
-  const inputValue = document.getElementById('input-amount').value;
-  const outputValue = document.getElementById('output-amount').value;
-  
-  document.getElementById('input-amount').value = outputValue;
-  document.getElementById('output-amount').value = inputValue;
-  
-  calculateOutput();
-}
-
-async function setMaxAmount() {
-  if (!selectedTokenIn || !currentAccount) return;
-  
-  try {
-    if (selectedTokenIn.isNative) {
-      const balance = await web3.eth.getBalance(currentAccount);
-      const balanceInEther = web3.utils.fromWei(balance, 'ether');
-      const maxAmount = Math.max(0, parseFloat(balanceInEther) - 0.1);
-      document.getElementById('input-amount').value = maxAmount.toFixed(6);
-    } else {
-      const tokenContract = new web3.eth.Contract(ERC20_ABI, selectedTokenIn.address);
-      const balance = await tokenContract.methods.balanceOf(currentAccount).call();
-      const balanceInEther = web3.utils.fromWei(balance, 'ether');
-      document.getElementById('input-amount').value = balanceInEther;
-    }
-    await calculateOutput();
-  } catch (error) {
-    console.error('Error setting max amount:', error);
-  }
-}
-
-async function executeSwap() {
-  if (!currentAccount) {
-    await connectWallet();
-    return;
-  }
-  
-  if (!selectedTokenIn || !selectedTokenOut) {
-    showStatus('Please select both tokens', 'error', 'status-message');
-    return;
-  }
-  
-  const amountIn = document.getElementById('input-amount').value;
-  
-  if (!amountIn || parseFloat(amountIn) <= 0) {
-    showStatus('Please enter an amount', 'error', 'status-message');
-    return;
-  }
-  
-  try {
-    showStatus('Preparing swap...', 'info', 'status-message');
-    
-    const amountInWei = web3.utils.toWei(amountIn, 'ether');
-    const deadline = Math.floor(Date.now() / 1000) + 60 * 20;
-    
-    if (selectedTokenIn.isNative) {
-      const path = [WSHM_ADDRESS, selectedTokenOut.address];
-      const amounts = await routerContract.methods.getAmountsOut(amountInWei, path).call();
-      const amountOutMin = (BigInt(amounts[1]) * BigInt(95)) / BigInt(100);
-      
-      showStatus('Swapping SHM for tokens...', 'info', 'status-message');
-      
-      const tx = await routerContract.methods.swapExactETHForTokens(
-        amountOutMin.toString(),
-        path,
-        currentAccount,
-        deadline
-      ).send({
-        from: currentAccount,
-        value: amountInWei,
-        maxFeePerGas: web3.utils.toWei('2500', 'gwei'),
-        maxPriorityFeePerGas: web3.utils.toWei('2500', 'gwei'),
-        gas: 300000
-      });
-      
-      showStatus(`Swap successful! 🎉 <a href="https://explorer-mezame.shardeum.org/tx/${tx.transactionHash}" target="_blank">View Transaction</a>`, 'success', 'status-message');
-    }
-    else if (selectedTokenOut.isNative) {
-      const path = [selectedTokenIn.address, WSHM_ADDRESS];
-      const amounts = await routerContract.methods.getAmountsOut(amountInWei, path).call();
-      const amountOutMin = (BigInt(amounts[1]) * BigInt(95)) / BigInt(100);
-      
-      const tokenContract = new web3.eth.Contract(ERC20_ABI, selectedTokenIn.address);
-      const allowance = await tokenContract.methods.allowance(currentAccount, ROUTER_ADDRESS).call();
-      
-      if (BigInt(allowance) < BigInt(amountInWei)) {
-        showStatus('Approving token...', 'info', 'status-message');
-        await tokenContract.methods.approve(ROUTER_ADDRESS, amountInWei).send({
-          from: currentAccount,
-          maxFeePerGas: web3.utils.toWei('2500', 'gwei'),
-          maxPriorityFeePerGas: web3.utils.toWei('2500', 'gwei'),
-          gas: 100000
-        });
-      }
-      
-      showStatus('Swapping tokens for SHM...', 'info', 'status-message');
-      
-      const tx = await routerContract.methods.swapExactTokensForETH(
-        amountInWei,
-        amountOutMin.toString(),
-        path,
-        currentAccount,
-        deadline
-      ).send({
-        from: currentAccount,
-        maxFeePerGas: web3.utils.toWei('2500', 'gwei'),
-        maxPriorityFeePerGas: web3.utils.toWei('2500', 'gwei'),
-        gas: 300000
-      });
-      
-      showStatus(`Swap successful! 🎉 <a href="https://explorer-mezame.shardeum.org/tx/${tx.transactionHash}" target="_blank">View Transaction</a>`, 'success', 'status-message');
-    }
-    else {
-      const path = [selectedTokenIn.address, selectedTokenOut.address];
-      const amounts = await routerContract.methods.getAmountsOut(amountInWei, path).call();
-      const amountOutMin = (BigInt(amounts[1]) * BigInt(95)) / BigInt(100);
-      
-      const tokenContract = new web3.eth.Contract(ERC20_ABI, selectedTokenIn.address);
-      const allowance = await tokenContract.methods.allowance(currentAccount, ROUTER_ADDRESS).call();
-      
-      if (BigInt(allowance) < BigInt(amountInWei)) {
-        showStatus('Approving token...', 'info', 'status-message');
-        await tokenContract.methods.approve(ROUTER_ADDRESS, amountInWei).send({
-          from: currentAccount,
-          maxFeePerGas: web3.utils.toWei('2500', 'gwei'),
-          maxPriorityFeePerGas: web3.utils.toWei('2500', 'gwei'),
-          gas: 100000
-        });
-      }
-      
-      showStatus('Swapping tokens...', 'info', 'status-message');
-      
-      const tx = await routerContract.methods.swapExactTokensForTokens(
-        amountInWei,
-        amountOutMin.toString(),
-        path,
-        currentAccount,
-        deadline
-      ).send({
-        from: currentAccount,
-        maxFeePerGas: web3.utils.toWei('2500', 'gwei'),
-        maxPriorityFeePerGas: web3.utils.toWei('2500', 'gwei'),
-        gas: 300000
-      });
-      
-      showStatus(`Swap successful! 🎉 <a href="https://explorer-mezame.shardeum.org/tx/${tx.transactionHash}" target="_blank">View Transaction</a>`, 'success', 'status-message');
-    }
-    
-    document.getElementById('input-amount').value = '';
-    document.getElementById('output-amount').value = '';
-    await updateBalances();
-    
-  } catch (error) {
-    console.error('Swap error:', error);
-    showStatus(error.message || 'Swap failed', 'error', 'status-message');
-  }
-}
-
-async function calculateLiquidityB() {
-  const amountA = document.getElementById('add-amount-a')?.value;
-  const amountB = document.getElementById('add-amount-b');
-  
-  if (!amountA || !window.selectedAddTokenA || !window.selectedAddTokenB || parseFloat(amountA) <= 0) {
-    if (amountB) amountB.value = '';
-    return;
-  }
-  
-  try {
-    const reserves = await routerContract.methods.getReserves(
-      window.selectedAddTokenA.address,
-      window.selectedAddTokenB.address
-    ).call();
-    
-    if (reserves.reserveA === '0' || reserves.reserveB === '0') {
-      return;
-    }
-    
-    const amountAWei = web3.utils.toWei(amountA, 'ether');
-    const optimalB = (BigInt(amountAWei) * BigInt(reserves.reserveB)) / BigInt(reserves.reserveA);
-    
-    if (amountB) {
-      amountB.value = web3.utils.fromWei(optimalB.toString(), 'ether');
-    }
-  } catch (error) {
-    console.error('Error calculating liquidity B:', error);
-  }
-}
-
-async function calculateLiquidityA() {
-  const amountB = document.getElementById('add-amount-b')?.value;
-  const amountA = document.getElementById('add-amount-a');
-  
-  if (!amountB || !window.selectedAddTokenA || !window.selectedAddTokenB || parseFloat(amountB) <= 0) {
-    if (amountA) amountA.value = '';
-    return;
-  }
-  
-  try {
-    const reserves = await routerContract.methods.getReserves(
-      window.selectedAddTokenA.address,
-      window.selectedAddTokenB.address
-    ).call();
-    
-    if (reserves.reserveA === '0' || reserves.reserveB === '0') {
-      return;
-    }
-    
-    const amountBWei = web3.utils.toWei(amountB, 'ether');
-    const optimalA = (BigInt(amountBWei) * BigInt(reserves.reserveA)) / BigInt(reserves.reserveB);
-    
-    if (amountA) {
-      amountA.value = web3.utils.fromWei(optimalA.toString(), 'ether');
-    }
-  } catch (error) {
-    console.error('Error calculating liquidity A:', error);
-  }
-}
-
-async function addLiquidity() {
-  if (!currentAccount) {
-    await connectWallet();
-    return;
-  }
-  
-  if (!window.selectedAddTokenA || !window.selectedAddTokenB) {
-    showStatus('Please select both tokens', 'error', 'add-status');
-    return;
-  }
-  
-  const amountA = document.getElementById('add-amount-a').value;
-  const amountB = document.getElementById('add-amount-b').value;
-  
-  if (!amountA || !amountB || parseFloat(amountA) <= 0 || parseFloat(amountB) <= 0) {
-    showStatus('Please enter valid amounts', 'error', 'add-status');
-    return;
-  }
-  
-  try {
-    showStatus('Checking balances...', 'info', 'add-status');
-    
-    const amountAWei = web3.utils.toWei(amountA, 'ether');
-    const amountBWei = web3.utils.toWei(amountB, 'ether');
-    
-    const tokenAContract = new web3.eth.Contract(ERC20_ABI, window.selectedAddTokenA.address);
-    const tokenBContract = new web3.eth.Contract(ERC20_ABI, window.selectedAddTokenB.address);
-    
-    const balanceA = await tokenAContract.methods.balanceOf(currentAccount).call();
-    const balanceB = await tokenBContract.methods.balanceOf(currentAccount).call();
-    
-    if (BigInt(balanceA) < BigInt(amountAWei)) {
-      showStatus(`Insufficient ${window.selectedAddTokenA.symbol} balance`, 'error', 'add-status');
-      return;
-    }
-    
-    if (BigInt(balanceB) < BigInt(amountBWei)) {
-      showStatus(`Insufficient ${window.selectedAddTokenB.symbol} balance`, 'error', 'add-status');
-      return;
-    }
-    
-    const MAX_UINT256 = '115792089237316195423570985008687907853269984665640564039457584007913129639935';
-    
-    showStatus(`Checking ${window.selectedAddTokenA.symbol} approval...`, 'info', 'add-status');
-    const allowanceA = await tokenAContract.methods.allowance(currentAccount, ROUTER_ADDRESS).call();
-    
-    if (BigInt(allowanceA) < BigInt(amountAWei)) {
-      showStatus(`Approving ${window.selectedAddTokenA.symbol}...`, 'info', 'add-status');
-      await tokenAContract.methods.approve(ROUTER_ADDRESS, MAX_UINT256).send({
-        from: currentAccount,
-        maxFeePerGas: web3.utils.toWei('3000', 'gwei'),
-        maxPriorityFeePerGas: web3.utils.toWei('3000', 'gwei'),
-        gas: 100000
-      });
-      await new Promise(resolve => setTimeout(resolve, 3000));
-    }
-    
-    showStatus(`Checking ${window.selectedAddTokenB.symbol} approval...`, 'info', 'add-status');
-    const allowanceB = await tokenBContract.methods.allowance(currentAccount, ROUTER_ADDRESS).call();
-    
-    if (BigInt(allowanceB) < BigInt(amountBWei)) {
-      showStatus(`Approving ${window.selectedAddTokenB.symbol}...`, 'info', 'add-status');
-      await tokenBContract.methods.approve(ROUTER_ADDRESS, MAX_UINT256).send({
-        from: currentAccount,
-        maxFeePerGas: web3.utils.toWei('3000', 'gwei'),
-        maxPriorityFeePerGas: web3.utils.toWei('3000', 'gwei'),
-        gas: 100000
-      });
-      await new Promise(resolve => setTimeout(resolve, 3000));
-    }
-    
-    const amountAMin = (BigInt(amountAWei) * BigInt(85)) / BigInt(100);
-    const amountBMin = (BigInt(amountBWei) * BigInt(85)) / BigInt(100);
-    const deadline = Math.floor(Date.now() / 1000) + 60 * 30;
-    
-    showStatus('Adding liquidity...', 'info', 'add-status');
-    
-    const tx = await routerContract.methods.addLiquidity(
-      window.selectedAddTokenA.address,
-      window.selectedAddTokenB.address,
-      amountAWei,
-      amountBWei,
-      amountAMin.toString(),
-      amountBMin.toString(),
-      currentAccount,
-      deadline
-    ).send({
-      from: currentAccount,
-      maxFeePerGas: web3.utils.toWei('3000', 'gwei'),
-      maxPriorityFeePerGas: web3.utils.toWei('3000', 'gwei'),
-      gas: 3000000
-    });
-    
-    showStatus(`Liquidity added successfully! 🎉 <a href="https://explorer-mezame.shardeum.org/tx/${tx.transactionHash}" target="_blank">View Transaction</a>`, 'success', 'add-status');
-    
-    document.getElementById('add-amount-a').value = '';
-    document.getElementById('add-amount-b').value = '';
-    await updateBalances();
-    await loadUserPositions();
-    
-  } catch (error) {
-    console.error('Add liquidity error:', error);
-    let errorMsg = 'Failed to add liquidity';
-    
-    if (error.message.includes('insufficient funds')) {
-      errorMsg = 'Insufficient SHM for gas fees';
-    } else if (error.message.includes('user rejected')) {
-      errorMsg = 'Transaction cancelled by user';
-    } else {
-      errorMsg = `Error: ${error.message}`;
-    }
-    
-    showStatus(errorMsg, 'error', 'add-status');
-  }
-}
-
-async function removeLiquidity() {
-  if (!currentAccount) {
-    await connectWallet();
-    return;
-  }
-  
-  const pairSelect = document.getElementById('pair-select');
-  const removeSlider = document.getElementById('remove-slider');
-  
-  if (!pairSelect || !pairSelect.value) {
-    showStatus('Please select a liquidity pair', 'error', 'remove-status');
-    return;
-  }
-  
-  const percentage = parseInt(removeSlider.value);
-  if (percentage === 0) {
-    showStatus('Please select an amount to remove', 'error', 'remove-status');
-    return;
-  }
-  
-  try {
-    showStatus('Preparing to remove liquidity...', 'info', 'remove-status');
-    
-    const pairAddress = pairSelect.value;
-    const pairContract = new web3.eth.Contract(PAIR_ABI, pairAddress);
-    
-    const lpBalance = await pairContract.methods.balanceOf(currentAccount).call();
-    const liquidityToRemove = (BigInt(lpBalance) * BigInt(percentage)) / BigInt(100);
-    
-    const token0 = await pairContract.methods.token0().call();
-    const token1 = await pairContract.methods.token1().call();
-    
-    const deadline = Math.floor(Date.now() / 1000) + 60 * 20;
-    
-    const allowance = await pairContract.methods.allowance(currentAccount, ROUTER_ADDRESS).call();
-    
-    if (BigInt(allowance) < BigInt(liquidityToRemove)) {
-      showStatus('Approving LP tokens...', 'info', 'remove-status');
-      await pairContract.methods.approve(ROUTER_ADDRESS, liquidityToRemove.toString()).send({
-        from: currentAccount,
-        maxFeePerGas: web3.utils.toWei('2500', 'gwei'),
-        maxPriorityFeePerGas: web3.utils.toWei('2500', 'gwei'),
-        gas: 100000
-      });
-    }
-    
-    showStatus('Removing liquidity...', 'info', 'remove-status');
-    
-    const tx = await routerContract.methods.removeLiquidity(
-      token0,
-      token1,
-      liquidityToRemove.toString(),
-      '0',
-      '0',
-      currentAccount,
-      deadline
-    ).send({
-      from: currentAccount,
-      maxFeePerGas: web3.utils.toWei('2500', 'gwei'),
-      maxPriorityFeePerGas: web3.utils.toWei('2500', 'gwei'),
-      gas: 500000
-    });
-    
-    showStatus(`Liquidity removed successfully! 🎉 <a href="https://explorer-mezame.shardeum.org/tx/${tx.transactionHash}" target="_blank">View Transaction</a>`, 'success', 'remove-status');
-    
-    removeSlider.value = 0;
-    updateRemoveAmount();
-    await loadUserPositions();
-    
-  } catch (error) {
-    console.error('Remove liquidity error:', error);
-    showStatus(error.message || 'Failed to remove liquidity', 'error', 'remove-status');
-  }
-}
-
-function updateRemoveAmount() {
-  const slider = document.getElementById('remove-slider');
-  const percentage = document.getElementById('remove-percentage');
-  
-  if (slider && percentage) {
-    percentage.textContent = slider.value;
-  }
-  
-  if (window.currentRemovePosition && slider) {
-    const percent = parseInt(slider.value);
-    const amount0 = (parseFloat(window.currentRemovePosition.amount0) * percent) / 100;
-    const amount1 = (parseFloat(window.currentRemovePosition.amount1) * percent) / 100;
-    const lpTokens = (parseFloat(window.currentRemovePosition.lpBalance) * percent) / 100;
-    
-    document.getElementById('receive-amount-a').textContent = amount0.toFixed(6);
-    document.getElementById('receive-amount-b').textContent = amount1.toFixed(6);
-    document.getElementById('lp-to-burn').textContent = lpTokens.toFixed(6);
-  }
-}
-
-async function loadUserPositions() {
-  if (!currentAccount) return;
-  
-  const positionsContainer = document.getElementById('positions-container');
-  const pairSelect = document.getElementById('pair-select');
-  
-  if (positionsContainer) {
-    positionsContainer.innerHTML = '<div class="loading" style="text-align: center; padding: 40px;">Loading positions...</div>';
-  }
-  
-  try {
-    const pairCount = await factoryContract.methods.allPairsLength().call();
-    const positions = [];
-    
-    for (let i = 0; i < pairCount; i++) {
-      const pairAddress = await factoryContract.methods.allPairs(i).call();
-      const pairContract = new web3.eth.Contract(PAIR_ABI, pairAddress);
-      
-      const lpBalance = await pairContract.methods.balanceOf(currentAccount).call();
-      
-      if (BigInt(lpBalance) > 0n) {
-        const token0Address = await pairContract.methods.token0().call();
-        const token1Address = await pairContract.methods.token1().call();
-        
-        const token0Contract = new web3.eth.Contract(ERC20_ABI, token0Address);
-        const token1Contract = new web3.eth.Contract(ERC20_ABI, token1Address);
-        
-        const [symbol0, symbol1, totalSupply, reserves] = await Promise.all([
-          token0Contract.methods.symbol().call(),
-          token1Contract.methods.symbol().call(),
-          pairContract.methods.totalSupply().call(),
-          pairContract.methods.getReserves().call()
-        ]);
-        
-        const poolShare = (BigInt(lpBalance) * BigInt(10000)) / BigInt(totalSupply);
-        const sharePercent = Number(poolShare) / 100;
-        
-        const amount0 = (BigInt(lpBalance) * BigInt(reserves.reserve0)) / BigInt(totalSupply);
-        const amount1 = (BigInt(lpBalance) * BigInt(reserves.reserve1)) / BigInt(totalSupply);
-        
-        positions.push({
-          pairAddress,
-          token0: { address: token0Address, symbol: symbol0 },
-          token1: { address: token1Address, symbol: symbol1 },
-          lpBalance: web3.utils.fromWei(lpBalance, 'ether'),
-          amount0: web3.utils.fromWei(amount0.toString(), 'ether'),
-          amount1: web3.utils.fromWei(amount1.toString(), 'ether'),
-          sharePercent: sharePercent.toFixed(4)
-        });
-      }
-    }
-    
-    if (pairSelect) {
-      pairSelect.innerHTML = '<option value="">Select a liquidity pair</option>';
-      positions.forEach(pos => {
-        const option = document.createElement('option');
-        option.value = pos.pairAddress;
-        option.textContent = `${pos.token0.symbol}/${pos.token1.symbol}`;
-        option.dataset.position = JSON.stringify(pos);
-        pairSelect.appendChild(option);
-      });
-      
-      pairSelect.onchange = function() {
-        if (this.value) {
-          const posData = JSON.parse(this.options[this.selectedIndex].dataset.position);
-          updateRemoveDisplay(posData);
-        }
-      };
-    }
-    
-    if (positionsContainer) {
-      if (positions.length === 0) {
-        positionsContainer.innerHTML = `
-          <div class="no-positions">
-            <p style="font-size: 1.2rem; margin-bottom: 10px;">📊 No positions yet</p>
-            <p>Add liquidity to create your first position</p>
-            <button class="action-btn" style="margin-top: 20px; max-width: 200px;" onclick="document.querySelector('[data-tab=add]').click()">
-              Add Liquidity
-            </button>
-          </div>
-        `;
-      } else {
-        positionsContainer.innerHTML = positions.map(pos => `
-          <div class="position-card">
-            <div class="position-header">
-              <h3>${pos.token0.symbol}/${pos.token1.symbol}</h3>
-              <span class="position-badge">${pos.sharePercent}% of pool</span>
-            </div>
-            <div class="position-details">
-              <div class="detail-row">
-                <span>${pos.token0.symbol}:</span>
-                <span>${parseFloat(pos.amount0).toFixed(6)}</span>
-              </div>
-              <div class="detail-row">
-                <span>${pos.token1.symbol}:</span>
-                <span>${parseFloat(pos.amount1).toFixed(6)}</span>
-              </div>
-              <div class="detail-row">
-                <span>LP Tokens:</span>
-                <span>${parseFloat(pos.lpBalance).toFixed(6)}</span>
-              </div>
-            </div>
-            <button class="action-btn" onclick="removeLiquidityFromCard('${pos.pairAddress}')" style="margin-top: 15px; width: 100%;">
-              Remove Liquidity
-            </button>
-          </div>
-        `).join('');
-      }
-    }
-    
-  } catch (error) {
-    console.error('Error loading positions:', error);
-    if (positionsContainer) {
-      positionsContainer.innerHTML = '<div class="no-positions"><p>Error loading positions. Please refresh.</p></div>';
-    }
-  }
-}
-
-function updateRemoveDisplay(position) {
-  const removeDetails = document.getElementById('remove-pool-details');
-  if (removeDetails) {
-    document.getElementById('receive-token-a-label').textContent = `${position.token0.symbol}:`;
-    document.getElementById('receive-token-b-label').textContent = `${position.token1.symbol}:`;
-    removeDetails.style.display = 'block';
-  }
-  
-  window.currentRemovePosition = position;
-  updateRemoveAmount();
-}
-
-function removeLiquidityFromCard(pairAddress) {
-  switchTab('remove');
-  
-  const pairSelect = document.getElementById('pair-select');
-  if (pairSelect) {
-    pairSelect.value = pairAddress;
-    pairSelect.dispatchEvent(new Event('change'));
-  }
-}
-
-function switchTab(tabName) {
-  const tabBtns = document.querySelectorAll('.tab-btn');
-  const tabContents = document.querySelectorAll('.tab-content');
-  
-  tabBtns.forEach(btn => btn.classList.remove('active'));
-  tabContents.forEach(content => content.classList.remove('active'));
-  
-  const activeBtn = document.querySelector(`[data-tab="${tabName}"]`);
-  const activeContent = document.getElementById(`${tabName}-tab`);
-  
-  if (activeBtn) activeBtn.classList.add('active');
-  if (activeContent) activeContent.classList.add('active');
-  
-  if (tabName === 'positions' || tabName === 'remove') {
-    loadUserPositions();
-  }
-}
-
-async function updateBalances() {
-  if (!currentAccount) return;
-  
-  if (selectedTokenIn) {
-    if (selectedTokenIn.isNative) {
-      const balance = await web3.eth.getBalance(currentAccount);
-      selectedTokenIn.balance = web3.utils.fromWei(balance, 'ether');
-    } else {
-      const tokenContract = new web3.eth.Contract(ERC20_ABI, selectedTokenIn.address);
-      const balance = await tokenContract.methods.balanceOf(currentAccount).call();
-      selectedTokenIn.balance = web3.utils.fromWei(balance, 'ether');
-    }
-    document.getElementById('balance-in').textContent = `Balance: ${parseFloat(selectedTokenIn.balance).toFixed(4)}`;
-  }
-  
-  if (selectedTokenOut) {
-    if (selectedTokenOut.isNative) {
-      const balance = await web3.eth.getBalance(currentAccount);
-      selectedTokenOut.balance = web3.utils.fromWei(balance, 'ether');
-    } else {
-      const tokenContract = new web3.eth.Contract(ERC20_ABI, selectedTokenOut.address);
-      const balance = await tokenContract.methods.balanceOf(currentAccount).call();
-      selectedTokenOut.balance = web3.utils.fromWei(balance, 'ether');
-    }
-    document.getElementById('balance-out').textContent = `Balance: ${parseFloat(selectedTokenOut.balance).toFixed(4)}`;
-  }
-}
-
-function showStatus(message, type, elementId = 'status-message') {
-  const statusEl = document.getElementById(elementId);
-  if (!statusEl) return;
-  
-  statusEl.innerHTML = message;
-  statusEl.className = `status-message ${type}`;
-  statusEl.style.display = 'block';
-  
-  if (type === 'success') {
-    setTimeout(() => {
-      statusEl.style.display = 'none';
-    }, 10000);
-  }
-}
-
-window.selectToken = selectToken;
-window.loadTokenList = loadTokenList;
-window.removeLiquidityFromCard = removeLiquidityFromCard;const web3 = new Web3(window.ethereum);
+const web3 = new Web3(window.ethereum);
 
 // Contract Addresses
 const FACTORY_ADDRESS = "0x1b5737e10f67bb6ac6355c35391cbab1a55ce98e";
@@ -1416,4 +722,691 @@ async function calculateOutput() {
     if (selectedTokenIn.isNative) {
       path = [WSHM_ADDRESS, selectedTokenOut.address];
     } else if (selectedTokenOut.isNative) {
-      path = [selectedTokenIn.
+      path = [selectedTokenIn.address, WSHM_ADDRESS];
+    } else {
+      path = [selectedTokenIn.address, selectedTokenOut.address];
+    }
+    
+    const amounts = await routerContract.methods.getAmountsOut(amountInWei, path).call();
+    const amountOut = web3.utils.fromWei(amounts[1], 'ether');
+    
+    outputAmount.value = parseFloat(amountOut).toFixed(6);
+    
+    const exchangeRate = parseFloat(amountOut) / parseFloat(amountIn);
+    const fee = parseFloat(amountIn) * 0.01;
+    const priceImpact = await calculatePriceImpact(amountInWei, amounts[1], path);
+    
+    document.getElementById('exchange-rate').textContent = `1 ${selectedTokenIn.symbol} = ${exchangeRate.toFixed(6)} ${selectedTokenOut.symbol}`;
+    document.getElementById('price-impact').textContent = `${priceImpact.toFixed(2)}%`;
+    document.getElementById('swap-fee').textContent = `${fee.toFixed(6)} ${selectedTokenIn.symbol}`;
+    
+    if (swapDetails) swapDetails.style.display = 'block';
+  } catch (error) {
+    console.error('Error calculating output:', error);
+    outputAmount.value = '';
+    if (swapDetails) swapDetails.style.display = 'none';
+  }
+}
+
+async function calculatePriceImpact(amountIn, amountOut, path) {
+  try {
+    const reserves = await routerContract.methods.getReserves(path[0], path[1]).call();
+    const reserveIn = reserves.reserveA;
+    const reserveOut = reserves.reserveB;
+    
+    const exactQuote = (BigInt(amountIn) * BigInt(reserveOut)) / BigInt(reserveIn);
+    const priceImpact = ((BigInt(exactQuote) - BigInt(amountOut)) * BigInt(10000)) / BigInt(exactQuote);
+    
+    return Number(priceImpact) / 100;
+  } catch (error) {
+    return 0;
+  }
+}
+
+function flipTokens() {
+  const temp = selectedTokenIn;
+  selectedTokenIn = selectedTokenOut;
+  selectedTokenOut = temp;
+  
+  if (selectedTokenIn) {
+    document.getElementById('token-in-symbol').textContent = selectedTokenIn.symbol;
+    document.getElementById('balance-in').textContent = `Balance: ${parseFloat(selectedTokenIn.balance || 0).toFixed(4)}`;
+  }
+  
+  if (selectedTokenOut) {
+    document.getElementById('token-out-symbol').textContent = selectedTokenOut.symbol;
+    document.getElementById('balance-out').textContent = `Balance: ${parseFloat(selectedTokenOut.balance || 0).toFixed(4)}`;
+  }
+  
+  const inputValue = document.getElementById('input-amount').value;
+  const outputValue = document.getElementById('output-amount').value;
+  
+  document.getElementById('input-amount').value = outputValue;
+  document.getElementById('output-amount').value = inputValue;
+  
+  calculateOutput();
+}
+
+async function setMaxAmount() {
+  if (!selectedTokenIn || !currentAccount) return;
+  
+  try {
+    if (selectedTokenIn.isNative) {
+      const balance = await web3.eth.getBalance(currentAccount);
+      const balanceInEther = web3.utils.fromWei(balance, 'ether');
+      const maxAmount = Math.max(0, parseFloat(balanceInEther) - 0.1);
+      document.getElementById('input-amount').value = maxAmount.toFixed(6);
+    } else {
+      const tokenContract = new web3.eth.Contract(ERC20_ABI, selectedTokenIn.address);
+      const balance = await tokenContract.methods.balanceOf(currentAccount).call();
+      const balanceInEther = web3.utils.fromWei(balance, 'ether');
+      document.getElementById('input-amount').value = balanceInEther;
+    }
+    await calculateOutput();
+  } catch (error) {
+    console.error('Error setting max amount:', error);
+  }
+}
+
+async function executeSwap() {
+  if (!currentAccount) {
+    await connectWallet();
+    return;
+  }
+  
+  if (!selectedTokenIn || !selectedTokenOut) {
+    showStatus('Please select both tokens', 'error', 'status-message');
+    return;
+  }
+  
+  const amountIn = document.getElementById('input-amount').value;
+  
+  if (!amountIn || parseFloat(amountIn) <= 0) {
+    showStatus('Please enter an amount', 'error', 'status-message');
+    return;
+  }
+  
+  try {
+    showStatus('Preparing swap...', 'info', 'status-message');
+    
+    const amountInWei = web3.utils.toWei(amountIn, 'ether');
+    const deadline = Math.floor(Date.now() / 1000) + 60 * 20;
+    
+    if (selectedTokenIn.isNative) {
+      const path = [WSHM_ADDRESS, selectedTokenOut.address];
+      const amounts = await routerContract.methods.getAmountsOut(amountInWei, path).call();
+      const amountOutMin = (BigInt(amounts[1]) * BigInt(95)) / BigInt(100);
+      
+      showStatus('Swapping SHM for tokens...', 'info', 'status-message');
+      
+      const tx = await routerContract.methods.swapExactETHForTokens(
+        amountOutMin.toString(),
+        path,
+        currentAccount,
+        deadline
+      ).send({
+        from: currentAccount,
+        value: amountInWei,
+        maxFeePerGas: web3.utils.toWei('2500', 'gwei'),
+        maxPriorityFeePerGas: web3.utils.toWei('2500', 'gwei'),
+        gas: 300000
+      });
+      
+      showStatus(`Swap successful! 🎉 <a href="https://explorer-mezame.shardeum.org/tx/${tx.transactionHash}" target="_blank">View Transaction</a>`, 'success', 'status-message');
+    }
+    else if (selectedTokenOut.isNative) {
+      const path = [selectedTokenIn.address, WSHM_ADDRESS];
+      const amounts = await routerContract.methods.getAmountsOut(amountInWei, path).call();
+      const amountOutMin = (BigInt(amounts[1]) * BigInt(95)) / BigInt(100);
+      
+      const tokenContract = new web3.eth.Contract(ERC20_ABI, selectedTokenIn.address);
+      const allowance = await tokenContract.methods.allowance(currentAccount, ROUTER_ADDRESS).call();
+      
+      if (BigInt(allowance) < BigInt(amountInWei)) {
+        showStatus('Approving token...', 'info', 'status-message');
+        await tokenContract.methods.approve(ROUTER_ADDRESS, amountInWei).send({
+          from: currentAccount,
+          maxFeePerGas: web3.utils.toWei('2500', 'gwei'),
+          maxPriorityFeePerGas: web3.utils.toWei('2500', 'gwei'),
+          gas: 100000
+        });
+      }
+      
+      showStatus('Swapping tokens for SHM...', 'info', 'status-message');
+      
+      const tx = await routerContract.methods.swapExactTokensForETH(
+        amountInWei,
+        amountOutMin.toString(),
+        path,
+        currentAccount,
+        deadline
+      ).send({
+        from: currentAccount,
+        maxFeePerGas: web3.utils.toWei('2500', 'gwei'),
+        maxPriorityFeePerGas: web3.utils.toWei('2500', 'gwei'),
+        gas: 300000
+      });
+      
+      showStatus(`Swap successful! 🎉 <a href="https://explorer-mezame.shardeum.org/tx/${tx.transactionHash}" target="_blank">View Transaction</a>`, 'success', 'status-message');
+    }
+    else {
+      const path = [selectedTokenIn.address, selectedTokenOut.address];
+      const amounts = await routerContract.methods.getAmountsOut(amountInWei, path).call();
+      const amountOutMin = (BigInt(amounts[1]) * BigInt(95)) / BigInt(100);
+      
+      const tokenContract = new web3.eth.Contract(ERC20_ABI, selectedTokenIn.address);
+      const allowance = await tokenContract.methods.allowance(currentAccount, ROUTER_ADDRESS).call();
+      
+      if (BigInt(allowance) < BigInt(amountInWei)) {
+        showStatus('Approving token...', 'info', 'status-message');
+        await tokenContract.methods.approve(ROUTER_ADDRESS, amountInWei).send({
+          from: currentAccount,
+          maxFeePerGas: web3.utils.toWei('2500', 'gwei'),
+          maxPriorityFeePerGas: web3.utils.toWei('2500', 'gwei'),
+          gas: 100000
+        });
+      }
+      
+      showStatus('Swapping tokens...', 'info', 'status-message');
+      
+      const tx = await routerContract.methods.swapExactTokensForTokens(
+        amountInWei,
+        amountOutMin.toString(),
+        path,
+        currentAccount,
+        deadline
+      ).send({
+        from: currentAccount,
+        maxFeePerGas: web3.utils.toWei('2500', 'gwei'),
+        maxPriorityFeePerGas: web3.utils.toWei('2500', 'gwei'),
+        gas: 300000
+      });
+      
+      showStatus(`Swap successful! 🎉 <a href="https://explorer-mezame.shardeum.org/tx/${tx.transactionHash}" target="_blank">View Transaction</a>`, 'success', 'status-message');
+    }
+    
+    document.getElementById('input-amount').value = '';
+    document.getElementById('output-amount').value = '';
+    await updateBalances();
+    
+  } catch (error) {
+    console.error('Swap error:', error);
+    showStatus(error.message || 'Swap failed', 'error', 'status-message');
+  }
+}
+
+async function calculateLiquidityB() {
+  const amountA = document.getElementById('add-amount-a')?.value;
+  const amountB = document.getElementById('add-amount-b');
+  
+  if (!amountA || !window.selectedAddTokenA || !window.selectedAddTokenB || parseFloat(amountA) <= 0) {
+    if (amountB) amountB.value = '';
+    return;
+  }
+  
+  try {
+    const reserves = await routerContract.methods.getReserves(
+      window.selectedAddTokenA.address,
+      window.selectedAddTokenB.address
+    ).call();
+    
+    if (reserves.reserveA === '0' || reserves.reserveB === '0') {
+      return;
+    }
+    
+    const amountAWei = web3.utils.toWei(amountA, 'ether');
+    const optimalB = (BigInt(amountAWei) * BigInt(reserves.reserveB)) / BigInt(reserves.reserveA);
+    
+    if (amountB) {
+      amountB.value = web3.utils.fromWei(optimalB.toString(), 'ether');
+    }
+  } catch (error) {
+    console.error('Error calculating liquidity B:', error);
+  }
+}
+
+async function calculateLiquidityA() {
+  const amountB = document.getElementById('add-amount-b')?.value;
+  const amountA = document.getElementById('add-amount-a');
+  
+  if (!amountB || !window.selectedAddTokenA || !window.selectedAddTokenB || parseFloat(amountB) <= 0) {
+    if (amountA) amountA.value = '';
+    return;
+  }
+  
+  try {
+    const reserves = await routerContract.methods.getReserves(
+      window.selectedAddTokenA.address,
+      window.selectedAddTokenB.address
+    ).call();
+    
+    if (reserves.reserveA === '0' || reserves.reserveB === '0') {
+      return;
+    }
+    
+    const amountBWei = web3.utils.toWei(amountB, 'ether');
+    const optimalA = (BigInt(amountBWei) * BigInt(reserves.reserveA)) / BigInt(reserves.reserveB);
+    
+    if (amountA) {
+      amountA.value = web3.utils.fromWei(optimalA.toString(), 'ether');
+    }
+  } catch (error) {
+    console.error('Error calculating liquidity A:', error);
+  }
+}
+
+async function addLiquidity() {
+  if (!currentAccount) {
+    await connectWallet();
+    return;
+  }
+  
+  if (!window.selectedAddTokenA || !window.selectedAddTokenB) {
+    showStatus('Please select both tokens', 'error', 'add-status');
+    return;
+  }
+  
+  const amountA = document.getElementById('add-amount-a').value;
+  const amountB = document.getElementById('add-amount-b').value;
+  
+  if (!amountA || !amountB || parseFloat(amountA) <= 0 || parseFloat(amountB) <= 0) {
+    showStatus('Please enter valid amounts', 'error', 'add-status');
+    return;
+  }
+  
+  try {
+    showStatus('Checking balances...', 'info', 'add-status');
+    
+    const amountAWei = web3.utils.toWei(amountA, 'ether');
+    const amountBWei = web3.utils.toWei(amountB, 'ether');
+    
+    const tokenAContract = new web3.eth.Contract(ERC20_ABI, window.selectedAddTokenA.address);
+    const tokenBContract = new web3.eth.Contract(ERC20_ABI, window.selectedAddTokenB.address);
+    
+    const balanceA = await tokenAContract.methods.balanceOf(currentAccount).call();
+    const balanceB = await tokenBContract.methods.balanceOf(currentAccount).call();
+    
+    if (BigInt(balanceA) < BigInt(amountAWei)) {
+      showStatus(`Insufficient ${window.selectedAddTokenA.symbol} balance`, 'error', 'add-status');
+      return;
+    }
+    
+    if (BigInt(balanceB) < BigInt(amountBWei)) {
+      showStatus(`Insufficient ${window.selectedAddTokenB.symbol} balance`, 'error', 'add-status');
+      return;
+    }
+    
+    const MAX_UINT256 = '115792089237316195423570985008687907853269984665640564039457584007913129639935';
+    
+    showStatus(`Checking ${window.selectedAddTokenA.symbol} approval...`, 'info', 'add-status');
+    const allowanceA = await tokenAContract.methods.allowance(currentAccount, ROUTER_ADDRESS).call();
+    
+    if (BigInt(allowanceA) < BigInt(amountAWei)) {
+      showStatus(`Approving ${window.selectedAddTokenA.symbol}...`, 'info', 'add-status');
+      await tokenAContract.methods.approve(ROUTER_ADDRESS, MAX_UINT256).send({
+        from: currentAccount,
+        maxFeePerGas: web3.utils.toWei('3000', 'gwei'),
+        maxPriorityFeePerGas: web3.utils.toWei('3000', 'gwei'),
+        gas: 100000
+      });
+      await new Promise(resolve => setTimeout(resolve, 3000));
+    }
+    
+    showStatus(`Checking ${window.selectedAddTokenB.symbol} approval...`, 'info', 'add-status');
+    const allowanceB = await tokenBContract.methods.allowance(currentAccount, ROUTER_ADDRESS).call();
+    
+    if (BigInt(allowanceB) < BigInt(amountBWei)) {
+      showStatus(`Approving ${window.selectedAddTokenB.symbol}...`, 'info', 'add-status');
+      await tokenBContract.methods.approve(ROUTER_ADDRESS, MAX_UINT256).send({
+        from: currentAccount,
+        maxFeePerGas: web3.utils.toWei('3000', 'gwei'),
+        maxPriorityFeePerGas: web3.utils.toWei('3000', 'gwei'),
+        gas: 100000
+      });
+      await new Promise(resolve => setTimeout(resolve, 3000));
+    }
+    
+    const amountAMin = (BigInt(amountAWei) * BigInt(85)) / BigInt(100);
+    const amountBMin = (BigInt(amountBWei) * BigInt(85)) / BigInt(100);
+    const deadline = Math.floor(Date.now() / 1000) + 60 * 30;
+    
+    showStatus('Adding liquidity...', 'info', 'add-status');
+    
+    const tx = await routerContract.methods.addLiquidity(
+      window.selectedAddTokenA.address,
+      window.selectedAddTokenB.address,
+      amountAWei,
+      amountBWei,
+      amountAMin.toString(),
+      amountBMin.toString(),
+      currentAccount,
+      deadline
+    ).send({
+      from: currentAccount,
+      maxFeePerGas: web3.utils.toWei('3000', 'gwei'),
+      maxPriorityFeePerGas: web3.utils.toWei('3000', 'gwei'),
+      gas: 3000000
+    });
+    
+    showStatus(`Liquidity added successfully! 🎉 <a href="https://explorer-mezame.shardeum.org/tx/${tx.transactionHash}" target="_blank">View Transaction</a>`, 'success', 'add-status');
+    
+    document.getElementById('add-amount-a').value = '';
+    document.getElementById('add-amount-b').value = '';
+    await updateBalances();
+    await loadUserPositions();
+    
+  } catch (error) {
+    console.error('Add liquidity error:', error);
+    let errorMsg = 'Failed to add liquidity';
+    
+    if (error.message.includes('insufficient funds')) {
+      errorMsg = 'Insufficient SHM for gas fees';
+    } else if (error.message.includes('user rejected')) {
+      errorMsg = 'Transaction cancelled by user';
+    } else {
+      errorMsg = `Error: ${error.message}`;
+    }
+    
+    showStatus(errorMsg, 'error', 'add-status');
+  }
+}
+
+async function removeLiquidity() {
+  if (!currentAccount) {
+    await connectWallet();
+    return;
+  }
+  
+  const pairSelect = document.getElementById('pair-select');
+  const removeSlider = document.getElementById('remove-slider');
+  
+  if (!pairSelect || !pairSelect.value) {
+    showStatus('Please select a liquidity pair', 'error', 'remove-status');
+    return;
+  }
+  
+  const percentage = parseInt(removeSlider.value);
+  if (percentage === 0) {
+    showStatus('Please select an amount to remove', 'error', 'remove-status');
+    return;
+  }
+  
+  try {
+    showStatus('Preparing to remove liquidity...', 'info', 'remove-status');
+    
+    const pairAddress = pairSelect.value;
+    const pairContract = new web3.eth.Contract(PAIR_ABI, pairAddress);
+    
+    const lpBalance = await pairContract.methods.balanceOf(currentAccount).call();
+    const liquidityToRemove = (BigInt(lpBalance) * BigInt(percentage)) / BigInt(100);
+    
+    const token0 = await pairContract.methods.token0().call();
+    const token1 = await pairContract.methods.token1().call();
+    
+    const deadline = Math.floor(Date.now() / 1000) + 60 * 20;
+    
+    const allowance = await pairContract.methods.allowance(currentAccount, ROUTER_ADDRESS).call();
+    
+    if (BigInt(allowance) < BigInt(liquidityToRemove)) {
+      showStatus('Approving LP tokens...', 'info', 'remove-status');
+      await pairContract.methods.approve(ROUTER_ADDRESS, liquidityToRemove.toString()).send({
+        from: currentAccount,
+        maxFeePerGas: web3.utils.toWei('2500', 'gwei'),
+        maxPriorityFeePerGas: web3.utils.toWei('2500', 'gwei'),
+        gas: 100000
+      });
+    }
+    
+    showStatus('Removing liquidity...', 'info', 'remove-status');
+    
+    const tx = await routerContract.methods.removeLiquidity(
+      token0,
+      token1,
+      liquidityToRemove.toString(),
+      '0',
+      '0',
+      currentAccount,
+      deadline
+    ).send({
+      from: currentAccount,
+      maxFeePerGas: web3.utils.toWei('2500', 'gwei'),
+      maxPriorityFeePerGas: web3.utils.toWei('2500', 'gwei'),
+      gas: 500000
+    });
+    
+    showStatus(`Liquidity removed successfully! 🎉 <a href="https://explorer-mezame.shardeum.org/tx/${tx.transactionHash}" target="_blank">View Transaction</a>`, 'success', 'remove-status');
+    
+    removeSlider.value = 0;
+    updateRemoveAmount();
+    await loadUserPositions();
+    
+  } catch (error) {
+    console.error('Remove liquidity error:', error);
+    showStatus(error.message || 'Failed to remove liquidity', 'error', 'remove-status');
+  }
+}
+
+function updateRemoveAmount() {
+  const slider = document.getElementById('remove-slider');
+  const percentage = document.getElementById('remove-percentage');
+  
+  if (slider && percentage) {
+    percentage.textContent = slider.value;
+  }
+  
+  if (window.currentRemovePosition && slider) {
+    const percent = parseInt(slider.value);
+    const amount0 = (parseFloat(window.currentRemovePosition.amount0) * percent) / 100;
+    const amount1 = (parseFloat(window.currentRemovePosition.amount1) * percent) / 100;
+    const lpTokens = (parseFloat(window.currentRemovePosition.lpBalance) * percent) / 100;
+    
+    document.getElementById('receive-amount-a').textContent = amount0.toFixed(6);
+    document.getElementById('receive-amount-b').textContent = amount1.toFixed(6);
+    document.getElementById('lp-to-burn').textContent = lpTokens.toFixed(6);
+  }
+}
+
+async function loadUserPositions() {
+  if (!currentAccount) return;
+  
+  const positionsContainer = document.getElementById('positions-container');
+  const pairSelect = document.getElementById('pair-select');
+  
+  if (positionsContainer) {
+    positionsContainer.innerHTML = '<div class="loading" style="text-align: center; padding: 40px;">Loading positions...</div>';
+  }
+  
+  try {
+    const pairCount = await factoryContract.methods.allPairsLength().call();
+    const positions = [];
+    
+    for (let i = 0; i < pairCount; i++) {
+      const pairAddress = await factoryContract.methods.allPairs(i).call();
+      const pairContract = new web3.eth.Contract(PAIR_ABI, pairAddress);
+      
+      const lpBalance = await pairContract.methods.balanceOf(currentAccount).call();
+      
+      if (BigInt(lpBalance) > 0n) {
+        const token0Address = await pairContract.methods.token0().call();
+        const token1Address = await pairContract.methods.token1().call();
+        
+        const token0Contract = new web3.eth.Contract(ERC20_ABI, token0Address);
+        const token1Contract = new web3.eth.Contract(ERC20_ABI, token1Address);
+        
+        const [symbol0, symbol1, totalSupply, reserves] = await Promise.all([
+          token0Contract.methods.symbol().call(),
+          token1Contract.methods.symbol().call(),
+          pairContract.methods.totalSupply().call(),
+          pairContract.methods.getReserves().call()
+        ]);
+        
+        const poolShare = (BigInt(lpBalance) * BigInt(10000)) / BigInt(totalSupply);
+        const sharePercent = Number(poolShare) / 100;
+        
+        const amount0 = (BigInt(lpBalance) * BigInt(reserves.reserve0)) / BigInt(totalSupply);
+        const amount1 = (BigInt(lpBalance) * BigInt(reserves.reserve1)) / BigInt(totalSupply);
+        
+        positions.push({
+          pairAddress,
+          token0: { address: token0Address, symbol: symbol0 },
+          token1: { address: token1Address, symbol: symbol1 },
+          lpBalance: web3.utils.fromWei(lpBalance, 'ether'),
+          amount0: web3.utils.fromWei(amount0.toString(), 'ether'),
+          amount1: web3.utils.fromWei(amount1.toString(), 'ether'),
+          sharePercent: sharePercent.toFixed(4)
+        });
+      }
+    }
+    
+    if (pairSelect) {
+      pairSelect.innerHTML = '<option value="">Select a liquidity pair</option>';
+      positions.forEach(pos => {
+        const option = document.createElement('option');
+        option.value = pos.pairAddress;
+        option.textContent = `${pos.token0.symbol}/${pos.token1.symbol}`;
+        option.dataset.position = JSON.stringify(pos);
+        pairSelect.appendChild(option);
+      });
+      
+      pairSelect.onchange = function() {
+        if (this.value) {
+          const posData = JSON.parse(this.options[this.selectedIndex].dataset.position);
+          updateRemoveDisplay(posData);
+        }
+      };
+    }
+    
+    if (positionsContainer) {
+      if (positions.length === 0) {
+        positionsContainer.innerHTML = `
+          <div class="no-positions">
+            <p style="font-size: 1.2rem; margin-bottom: 10px;">📊 No positions yet</p>
+            <p>Add liquidity to create your first position</p>
+            <button class="action-btn" style="margin-top: 20px; max-width: 200px;" onclick="document.querySelector('[data-tab=add]').click()">
+              Add Liquidity
+            </button>
+          </div>
+        `;
+      } else {
+        positionsContainer.innerHTML = positions.map(pos => `
+          <div class="position-card">
+            <div class="position-header">
+              <h3>${pos.token0.symbol}/${pos.token1.symbol}</h3>
+              <span class="position-badge">${pos.sharePercent}% of pool</span>
+            </div>
+            <div class="position-details">
+              <div class="detail-row">
+                <span>${pos.token0.symbol}:</span>
+                <span>${parseFloat(pos.amount0).toFixed(6)}</span>
+              </div>
+              <div class="detail-row">
+                <span>${pos.token1.symbol}:</span>
+                <span>${parseFloat(pos.amount1).toFixed(6)}</span>
+              </div>
+              <div class="detail-row">
+                <span>LP Tokens:</span>
+                <span>${parseFloat(pos.lpBalance).toFixed(6)}</span>
+              </div>
+            </div>
+            <button class="action-btn" onclick="removeLiquidityFromCard('${pos.pairAddress}')" style="margin-top: 15px; width: 100%;">
+              Remove Liquidity
+            </button>
+          </div>
+        `).join('');
+      }
+    }
+    
+  } catch (error) {
+    console.error('Error loading positions:', error);
+    if (positionsContainer) {
+      positionsContainer.innerHTML = '<div class="no-positions"><p>Error loading positions. Please refresh.</p></div>';
+    }
+  }
+}
+
+function updateRemoveDisplay(position) {
+  const removeDetails = document.getElementById('remove-pool-details');
+  if (removeDetails) {
+    document.getElementById('receive-token-a-label').textContent = `${position.token0.symbol}:`;
+    document.getElementById('receive-token-b-label').textContent = `${position.token1.symbol}:`;
+    removeDetails.style.display = 'block';
+  }
+  
+  window.currentRemovePosition = position;
+  updateRemoveAmount();
+}
+
+function removeLiquidityFromCard(pairAddress) {
+  switchTab('remove');
+  
+  const pairSelect = document.getElementById('pair-select');
+  if (pairSelect) {
+    pairSelect.value = pairAddress;
+    pairSelect.dispatchEvent(new Event('change'));
+  }
+}
+
+function switchTab(tabName) {
+  const tabBtns = document.querySelectorAll('.tab-btn');
+  const tabContents = document.querySelectorAll('.tab-content');
+  
+  tabBtns.forEach(btn => btn.classList.remove('active'));
+  tabContents.forEach(content => content.classList.remove('active'));
+  
+  const activeBtn = document.querySelector(`[data-tab="${tabName}"]`);
+  const activeContent = document.getElementById(`${tabName}-tab`);
+  
+  if (activeBtn) activeBtn.classList.add('active');
+  if (activeContent) activeContent.classList.add('active');
+  
+  if (tabName === 'positions' || tabName === 'remove') {
+    loadUserPositions();
+  }
+}
+
+async function updateBalances() {
+  if (!currentAccount) return;
+  
+  if (selectedTokenIn) {
+    if (selectedTokenIn.isNative) {
+      const balance = await web3.eth.getBalance(currentAccount);
+      selectedTokenIn.balance = web3.utils.fromWei(balance, 'ether');
+    } else {
+      const tokenContract = new web3.eth.Contract(ERC20_ABI, selectedTokenIn.address);
+      const balance = await tokenContract.methods.balanceOf(currentAccount).call();
+      selectedTokenIn.balance = web3.utils.fromWei(balance, 'ether');
+    }
+    document.getElementById('balance-in').textContent = `Balance: ${parseFloat(selectedTokenIn.balance).toFixed(4)}`;
+  }
+  
+  if (selectedTokenOut) {
+    if (selectedTokenOut.isNative) {
+      const balance = await web3.eth.getBalance(currentAccount);
+      selectedTokenOut.balance = web3.utils.fromWei(balance, 'ether');
+    } else {
+      const tokenContract = new web3.eth.Contract(ERC20_ABI, selectedTokenOut.address);
+      const balance = await tokenContract.methods.balanceOf(currentAccount).call();
+      selectedTokenOut.balance = web3.utils.fromWei(balance, 'ether');
+    }
+    document.getElementById('balance-out').textContent = `Balance: ${parseFloat(selectedTokenOut.balance).toFixed(4)}`;
+  }
+}
+
+function showStatus(message, type, elementId = 'status-message') {
+  const statusEl = document.getElementById(elementId);
+  if (!statusEl) return;
+  
+  statusEl.innerHTML = message;
+  statusEl.className = `status-message ${type}`;
+  statusEl.style.display = 'block';
+  
+  if (type === 'success') {
+    setTimeout(() => {
+      statusEl.style.display = 'none';
+    }, 10000);
+  }
+}
+
+window.selectToken = selectToken;
+window.loadTokenList = loadTokenList;
+window.removeLiquidityFromCard = removeLiquidityFromCard;
