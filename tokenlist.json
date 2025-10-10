@@ -26,6 +26,20 @@
       "symbol": "SPLIT",
       "decimals": 18,
       "logoURI": "https://raw.githubusercontent.com/BrunoMarshall/MintonDex/main/logos/0xCd11325Fa7d01Ae694b3292DCbEB1B442D5854D6.png"
+    },
+    {
+          "address": "0x2c0674CBaa07106E53Fe07c9bB9B0af6F8139d66",
+          "name": "Pay2Friends",
+          "symbol": "P2F",
+          "decimals": 18,
+          "logoURI": "https://raw.githubusercontent.com/BrunoMarshall/MintonDex/main/logos/0x2c0674CBaa07106E53Fe07c9bB9B0af6F8139d66.png"
+    },
+   {
+          "address": "0xF9C6573e550ca7955FB19a2115932500978bAf30",
+          "name": "GUNDA",
+          "symbol": "GUNDA",
+          "decimals": 18,
+          "logoURI": "https://raw.githubusercontent.com/BrunoMarshall/MintonDex/main/logos/0xF9C6573e550ca7955FB19a2115932500978bAf30.png"
     }
   ]
 }
