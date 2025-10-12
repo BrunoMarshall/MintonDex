@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.30;
+pragma solidity ^0.8.20;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
@@ -60,10 +60,10 @@ contract MintonPair is ReentrancyGuard {
         token1 = _token1;
     }
     
-    function getReserves() public view returns (uint256 _reserve0, uint256 _reserve1, uint256 _blockTimestampLast) {
-        _reserve0 = reserve0;
-        _reserve1 = reserve1;
-        _blockTimestampLast = blockTimestampLast;
+    function getReserves() public view returns (uint112 _reserve0, uint112 _reserve1, uint32 _blockTimestampLast) {
+        _reserve0 = uint112(reserve0);
+        _reserve1 = uint112(reserve1);
+        _blockTimestampLast = uint32(blockTimestampLast);
     }
     
     function _mint(address to, uint256 value) private {
@@ -108,6 +108,7 @@ contract MintonPair is ReentrancyGuard {
     }
     
     function _update(uint256 balance0, uint256 balance1) private {
+        require(balance0 <= type(uint112).max && balance1 <= type(uint112).max, "MintonPair: OVERFLOW");
         reserve0 = balance0;
         reserve1 = balance1;
         blockTimestampLast = block.timestamp;
@@ -124,8 +125,8 @@ contract MintonPair is ReentrancyGuard {
                 uint256 rootK = sqrt(_reserve0 * _reserve1);
                 uint256 rootKLast = sqrt(_kLast);
                 if (rootK > rootKLast) {
-                    uint256 numerator = totalSupply * (rootK - rootKLast) * 7;
-                    uint256 denominator = rootK * 10;
+                    uint256 numerator = totalSupply * (rootK - rootKLast);
+                    uint256 denominator = (rootK * 5) + rootKLast;
                     uint256 liquidity = numerator / denominator;
                     if (liquidity > 0) _mint(feeTo, liquidity);
                 }
@@ -136,7 +137,7 @@ contract MintonPair is ReentrancyGuard {
     }
     
     function mint(address to) external lock nonReentrant returns (uint256 liquidity) {
-        (uint256 _reserve0, uint256 _reserve1,) = getReserves();
+        (uint112 _reserve0, uint112 _reserve1,) = getReserves();
         uint256 balance0 = IERC20(token0).balanceOf(address(this));
         uint256 balance1 = IERC20(token1).balanceOf(address(this));
         uint256 amount0 = balance0 - _reserve0;
@@ -147,7 +148,7 @@ contract MintonPair is ReentrancyGuard {
         
         if (_totalSupply == 0) {
             liquidity = sqrt(amount0 * amount1) - MINIMUM_LIQUIDITY;
-            _mint(address(0), MINIMUM_LIQUIDITY);
+            _mint(address(0xdead), MINIMUM_LIQUIDITY);
         } else {
             liquidity = min((amount0 * _totalSupply) / _reserve0, (amount1 * _totalSupply) / _reserve1);
         }
@@ -156,12 +157,12 @@ contract MintonPair is ReentrancyGuard {
         _mint(to, liquidity);
         
         _update(balance0, balance1);
-        if (feeOn) kLast = reserve0 * reserve1;
+        if (feeOn) kLast = uint256(reserve0) * uint256(reserve1);
         emit Mint(msg.sender, amount0, amount1);
     }
     
     function burn(address to) external lock nonReentrant returns (uint256 amount0, uint256 amount1) {
-        (uint256 _reserve0, uint256 _reserve1,) = getReserves();
+        (uint112 _reserve0, uint112 _reserve1,) = getReserves();
         address _token0 = token0;
         address _token1 = token1;
         uint256 balance0 = IERC20(_token0).balanceOf(address(this));
@@ -176,54 +177,87 @@ contract MintonPair is ReentrancyGuard {
         require(amount0 > 0 && amount1 > 0, "MintonPair: INSUFFICIENT_LIQUIDITY_BURNED");
         
         _burn(address(this), liquidity);
-        IERC20(_token0).transfer(to, amount0);
-        IERC20(_token1).transfer(to, amount1);
+        
+        require(IERC20(_token0).transfer(to, amount0), "MintonPair: TRANSFER_FAILED");
+        require(IERC20(_token1).transfer(to, amount1), "MintonPair: TRANSFER_FAILED");
         
         balance0 = IERC20(_token0).balanceOf(address(this));
         balance1 = IERC20(_token1).balanceOf(address(this));
         
         _update(balance0, balance1);
-        if (feeOn) kLast = reserve0 * reserve1;
+        if (feeOn) kLast = uint256(reserve0) * uint256(reserve1);
         emit Burn(msg.sender, amount0, amount1, to);
     }
     
-    function swap(uint256 amount0Out, uint256 amount1Out, address to) external lock nonReentrant {
+    // 1% TOTAL FEE: 0.3% to LPs + 0.7% to feeTo address
+    function swap(uint256 amount0Out, uint256 amount1Out, address to, bytes calldata) external lock nonReentrant {
         require(amount0Out > 0 || amount1Out > 0, "MintonPair: INSUFFICIENT_OUTPUT_AMOUNT");
-        (uint256 _reserve0, uint256 _reserve1,) = getReserves();
+        (uint112 _reserve0, uint112 _reserve1,) = getReserves();
         require(amount0Out < _reserve0 && amount1Out < _reserve1, "MintonPair: INSUFFICIENT_LIQUIDITY");
         
-        uint256 balance0;
-        uint256 balance1;
-        {
-            address _token0 = token0;
-            address _token1 = token1;
-            require(to != _token0 && to != _token1, "MintonPair: INVALID_TO");
-            if (amount0Out > 0) IERC20(_token0).transfer(to, amount0Out);
-            if (amount1Out > 0) IERC20(_token1).transfer(to, amount1Out);
-            balance0 = IERC20(_token0).balanceOf(address(this));
-            balance1 = IERC20(_token1).balanceOf(address(this));
-        }
+        address _token0 = token0;
+        address _token1 = token1;
+        require(to != _token0 && to != _token1, "MintonPair: INVALID_TO");
         
-        uint256 amount0In = balance0 > _reserve0 - amount0Out ? balance0 - (_reserve0 - amount0Out) : 0;
-        uint256 amount1In = balance1 > _reserve1 - amount1Out ? balance1 - (_reserve1 - amount1Out) : 0;
+        // Transfer tokens out
+        if (amount0Out > 0) require(IERC20(_token0).transfer(to, amount0Out), "MintonPair: TRANSFER_FAILED");
+        if (amount1Out > 0) require(IERC20(_token1).transfer(to, amount1Out), "MintonPair: TRANSFER_FAILED");
+        
+        // Calculate amounts in and apply fees
+        (uint256 amount0In, uint256 amount1In) = _processSwapFees(_token0, _token1, _reserve0, _reserve1, amount0Out, amount1Out);
+        
+        emit Swap(msg.sender, amount0In, amount1In, amount0Out, amount1Out, to);
+    }
+    
+    function _processSwapFees(
+        address _token0,
+        address _token1,
+        uint256 _reserve0,
+        uint256 _reserve1,
+        uint256 amount0Out,
+        uint256 amount1Out
+    ) private returns (uint256 amount0In, uint256 amount1In) {
+        uint256 balance0 = IERC20(_token0).balanceOf(address(this));
+        uint256 balance1 = IERC20(_token1).balanceOf(address(this));
+        
+        amount0In = balance0 > _reserve0 - amount0Out ? balance0 - (_reserve0 - amount0Out) : 0;
+        amount1In = balance1 > _reserve1 - amount1Out ? balance1 - (_reserve1 - amount1Out) : 0;
         require(amount0In > 0 || amount1In > 0, "MintonPair: INSUFFICIENT_INPUT_AMOUNT");
         
-        {
-            // 1% total fee (990/1000)
-            uint256 balance0Adjusted = (balance0 * 1000) - (amount0In * 10);
-            uint256 balance1Adjusted = (balance1 * 1000) - (amount1In * 10);
-            require(balance0Adjusted * balance1Adjusted >= _reserve0 * _reserve1 * (1000**2), "MintonPair: K");
+        // Take 0.7% fee and send to feeTo address
+        address feeTo = IMintonFactory(factory).feeTo();
+        if (feeTo != address(0)) {
+            if (amount0In > 0) {
+                uint256 fee0 = (amount0In * 7) / 1000;
+                if (fee0 > 0) {
+                    require(IERC20(_token0).transfer(feeTo, fee0), "MintonPair: FEE_TRANSFER_FAILED");
+                    balance0 -= fee0;
+                }
+            }
+            if (amount1In > 0) {
+                uint256 fee1 = (amount1In * 7) / 1000;
+                if (fee1 > 0) {
+                    require(IERC20(_token1).transfer(feeTo, fee1), "MintonPair: FEE_TRANSFER_FAILED");
+                    balance1 -= fee1;
+                }
+            }
         }
         
+        // Validate K with 0.3% LP fee
+        require(
+            (balance0 * 1000 - amount0In * 3) * (balance1 * 1000 - amount1In * 3) >= 
+            _reserve0 * _reserve1 * 1000000,
+            "MintonPair: K"
+        );
+        
         _update(balance0, balance1);
-        emit Swap(msg.sender, amount0In, amount1In, amount0Out, amount1Out, to);
     }
     
     function skim(address to) external lock nonReentrant {
         address _token0 = token0;
         address _token1 = token1;
-        IERC20(_token0).transfer(to, IERC20(_token0).balanceOf(address(this)) - reserve0);
-        IERC20(_token1).transfer(to, IERC20(_token1).balanceOf(address(this)) - reserve1);
+        require(IERC20(_token0).transfer(to, IERC20(_token0).balanceOf(address(this)) - reserve0), "MintonPair: TRANSFER_FAILED");
+        require(IERC20(_token1).transfer(to, IERC20(_token1).balanceOf(address(this)) - reserve1), "MintonPair: TRANSFER_FAILED");
     }
     
     function sync() external lock nonReentrant {
@@ -256,7 +290,7 @@ contract MintonFactory is Ownable {
     mapping(address => mapping(address => address)) public getPair;
     address[] public allPairs;
     
-    // Fee collection address - SET TO YOUR ADDRESS
+    // Fee collection address - HARDCODED as you wanted
     address public feeTo = 0xd66F8E61Af6bBDceB0e568Ee2f971c00EeD32441;
     address public feeToSetter;
     
