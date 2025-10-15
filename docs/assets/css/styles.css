@@ -156,6 +156,8 @@ main {
     padding: 24px;
     border-radius: 16px;
     border: 2px solid #e9ecef;
+    width: 100%;
+    max-width: 100%;
 }
 
 .token-input-group {
@@ -177,6 +179,7 @@ main {
     display: flex;
     gap: 12px;
     align-items: center;
+    justify-content: space-between;
 }
 
 .amount-input {
@@ -187,6 +190,7 @@ main {
     font-weight: 600;
     outline: none;
     color: #333;
+    min-width: 0;
 }
 
 .amount-input::placeholder {
@@ -204,6 +208,7 @@ main {
     font-size: 1rem;
     transition: all 0.3s;
     white-space: nowrap;
+    flex-shrink: 0;
 }
 
 .token-select:hover {
@@ -771,6 +776,7 @@ footer {
     .input-row {
         flex-direction: column;
         align-items: stretch;
+        gap: 12px;
     }
 
     .token-select {
