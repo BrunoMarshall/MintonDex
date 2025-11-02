@@ -8,8 +8,8 @@
 }
 
 body {
-    /* NEW: Only this line changed - subtle white to soft grey gradient */
-    background: linear-gradient(to right, #ffffff, #f5f5f7);
+    /* NEW: Darker gradient - white to medium grey */
+    background: linear-gradient(to right, #f8f9fa, #e9ecef);
     color: #333333;
     min-height: 100vh;
     display: flex;
