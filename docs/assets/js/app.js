@@ -792,13 +792,25 @@ async function calculateOutput() {
       path = [selectedTokenIn.address, selectedTokenOut.address];
     }
     
+    // Check if pool exists first
+    const pairAddress = await factoryContract.methods.getPair(path[0], path[1]).call();
+    
+    if (!pairAddress || pairAddress === '0x0000000000000000000000000000000000000000') {
+      outputAmount.value = '';
+      if (swapDetails) {
+        swapDetails.innerHTML = '<div style="color: #ff6b6b; padding: 15px; text-align: center;">No liquidity pool exists for this pair. <a href="pool.html" style="color: #667eea;">Create one?</a></div>';
+        swapDetails.style.display = 'block';
+      }
+      return;
+    }
+    
     const amounts = await routerContract.methods.getAmountsOut(amountInWei, path).call();
     const amountOut = web3.utils.fromWei(amounts[1], 'ether');
     
     outputAmount.value = parseFloat(amountOut).toFixed(6);
     
     const exchangeRate = parseFloat(amountOut) / parseFloat(amountIn);
-    const fee = parseFloat(amountIn) * 0.01;
+    const fee = parseFloat(amountIn) * 0.003;
     const priceImpact = await calculatePriceImpact(amountInWei, amounts[1], path);
     
     document.getElementById('exchange-rate').textContent = `1 ${selectedTokenIn.symbol} = ${exchangeRate.toFixed(6)} ${selectedTokenOut.symbol}`;
@@ -807,12 +819,14 @@ async function calculateOutput() {
     
     if (swapDetails) swapDetails.style.display = 'block';
   } catch (error) {
-    console.error('Error calculating output:', error);
+    console.log('Calculate output: Pool may not exist');
     outputAmount.value = '';
-    if (swapDetails) swapDetails.style.display = 'none';
+    if (swapDetails) {
+      swapDetails.innerHTML = '<div style="color: #ff6b6b; padding: 15px; text-align: center;">No liquidity pool exists for this pair. <a href="pool.html" style="color: #667eea;">Create one?</a></div>';
+      swapDetails.style.display = 'block';
+    }
   }
 }
-
 async function calculatePriceImpact(amountIn, amountOut, path) {
   try {
     const reserves = await routerContract.methods.getReserves(path[0], path[1]).call();
@@ -1126,8 +1140,10 @@ async function addLiquidity() {
       
       // Check SHM balance
       const shmBalance = await web3.eth.getBalance(currentAccount);
-      if (BigInt(shmBalance) < BigInt(ethAmount)) {
-        showStatus('Insufficient SHM balance', 'error', 'add-status');
+      const requiredSHM = BigInt(ethAmount) + BigInt(web3.utils.toWei('0.01', 'ether')); // Add gas buffer
+      
+      if (BigInt(shmBalance) < requiredSHM) {
+        showStatus('Insufficient SHM balance (need extra for gas)', 'error', 'add-status');
         return;
       }
       
@@ -1156,8 +1172,8 @@ async function addLiquidity() {
         await new Promise(resolve => setTimeout(resolve, 3000));
       }
       
-      const tokenAmountMin = (BigInt(tokenAmount) * BigInt(85)) / BigInt(100);
-      const ethAmountMin = (BigInt(ethAmount) * BigInt(85)) / BigInt(100);
+      const tokenAmountMin = (BigInt(tokenAmount) * BigInt(95)) / BigInt(100);
+      const ethAmountMin = (BigInt(ethAmount) * BigInt(95)) / BigInt(100);
       const deadline = Math.floor(Date.now() / 1000) + 60 * 30;
       
       showStatus('Adding liquidity with SHM (auto-wrapping)...', 'info', 'add-status');
@@ -1235,8 +1251,8 @@ async function addLiquidity() {
         await new Promise(resolve => setTimeout(resolve, 3000));
       }
       
-      const amountAMin = (BigInt(amountAWei) * BigInt(85)) / BigInt(100);
-      const amountBMin = (BigInt(amountBWei) * BigInt(85)) / BigInt(100);
+      const amountAMin = (BigInt(amountAWei) * BigInt(95)) / BigInt(100);
+      const amountBMin = (BigInt(amountBWei) * BigInt(95)) / BigInt(100);
       const deadline = Math.floor(Date.now() / 1000) + 60 * 30;
       
       showStatus('Adding liquidity...', 'info', 'add-status');
@@ -1273,6 +1289,8 @@ async function addLiquidity() {
       errorMsg = 'Insufficient SHM for gas fees';
     } else if (error.message.includes('user rejected')) {
       errorMsg = 'Transaction cancelled by user';
+    } else if (error.message.includes('INSUFFICIENT_')) {
+      errorMsg = 'Insufficient liquidity or invalid amounts. Try adjusting your amounts.';
     } else {
       errorMsg = `Error: ${error.message}`;
     }
@@ -1280,8 +1298,6 @@ async function addLiquidity() {
     showStatus(errorMsg, 'error', 'add-status');
   }
 }
-
-
 async function removeLiquidity() {
   if (!currentAccount) {
     await connectWallet();
