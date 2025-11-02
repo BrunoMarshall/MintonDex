@@ -1474,7 +1474,15 @@ function updateRemoveAmount() {
 }
 
 async function loadUserPositions() {
-  if (!currentAccount) return;
+  if (!currentAccount) {
+    console.log("No account connected");
+    return;
+  }
+  
+  console.log("=== LOADING USER POSITIONS ===");
+  console.log("Current Account:", currentAccount);
+  console.log("Factory Address:", FACTORY_ADDRESS);
+  console.log("WSHM Address:", WSHM_ADDRESS);
   
   const positionsContainer = document.getElementById('positions-container');
   const pairSelect = document.getElementById('pair-select');
@@ -1485,58 +1493,74 @@ async function loadUserPositions() {
   
   try {
     const pairCount = await factoryContract.methods.allPairsLength().call();
-    const positions = [];
+    console.log(`Total pairs in factory: ${pairCount}`);
     
-    console.log(`Checking ${pairCount} pairs...`);
+    const positions = [];
     
     for (let i = 0; i < pairCount; i++) {
       const pairAddress = await factoryContract.methods.allPairs(i).call();
+      console.log(`\n--- Checking pair ${i}: ${pairAddress}`);
+      
       const pairContract = new web3.eth.Contract(PAIR_ABI, pairAddress);
       
-      const lpBalance = await pairContract.methods.balanceOf(currentAccount).call();
-      
-      if (BigInt(lpBalance) > 0n) {
-        const token0Address = await pairContract.methods.token0().call();
-        const token1Address = await pairContract.methods.token1().call();
+      try {
+        const lpBalance = await pairContract.methods.balanceOf(currentAccount).call();
+        console.log(`LP Balance: ${web3.utils.fromWei(lpBalance, 'ether')}`);
         
-        console.log(`Found position in pair: ${pairAddress}`);
-        console.log(`Token0: ${token0Address}, Token1: ${token1Address}`);
-        
-        const token0Contract = new web3.eth.Contract(ERC20_ABI, token0Address);
-        const token1Contract = new web3.eth.Contract(ERC20_ABI, token1Address);
-        
-        const [symbol0, symbol1, totalSupply, reserves] = await Promise.all([
-          token0Contract.methods.symbol().call(),
-          token1Contract.methods.symbol().call(),
-          pairContract.methods.totalSupply().call(),
-          pairContract.methods.getReserves().call()
-        ]);
-        
-        // Convert WSHM to SHM for display
-        const displaySymbol0 = (token0Address.toLowerCase() === WSHM_ADDRESS.toLowerCase()) ? 'SHM' : symbol0;
-        const displaySymbol1 = (token1Address.toLowerCase() === WSHM_ADDRESS.toLowerCase()) ? 'SHM' : symbol1;
-        
-        console.log(`Symbols: ${displaySymbol0}/${displaySymbol1}`);
-        
-        const poolShare = (BigInt(lpBalance) * BigInt(10000)) / BigInt(totalSupply);
-        const sharePercent = Number(poolShare) / 100;
-        
-        const amount0 = (BigInt(lpBalance) * BigInt(reserves.reserve0)) / BigInt(totalSupply);
-        const amount1 = (BigInt(lpBalance) * BigInt(reserves.reserve1)) / BigInt(totalSupply);
-        
-        positions.push({
-          pairAddress,
-          token0: { address: token0Address, symbol: displaySymbol0 },
-          token1: { address: token1Address, symbol: displaySymbol1 },
-          lpBalance: web3.utils.fromWei(lpBalance, 'ether'),
-          amount0: web3.utils.fromWei(amount0.toString(), 'ether'),
-          amount1: web3.utils.fromWei(amount1.toString(), 'ether'),
-          sharePercent: sharePercent.toFixed(4)
-        });
+        if (BigInt(lpBalance) > 0n) {
+          console.log("✅ Found position!");
+          
+          const token0Address = await pairContract.methods.token0().call();
+          const token1Address = await pairContract.methods.token1().call();
+          
+          console.log(`Token0 Address: ${token0Address}`);
+          console.log(`Token1 Address: ${token1Address}`);
+          
+          const token0Contract = new web3.eth.Contract(ERC20_ABI, token0Address);
+          const token1Contract = new web3.eth.Contract(ERC20_ABI, token1Address);
+          
+          const [symbol0, symbol1, name0, name1, totalSupply, reserves] = await Promise.all([
+            token0Contract.methods.symbol().call(),
+            token1Contract.methods.symbol().call(),
+            token0Contract.methods.name().call(),
+            token1Contract.methods.name().call(),
+            pairContract.methods.totalSupply().call(),
+            pairContract.methods.getReserves().call()
+          ]);
+          
+          console.log(`Token0: ${symbol0} (${name0})`);
+          console.log(`Token1: ${symbol1} (${name1})`);
+          
+          // Convert WSHM to SHM for display
+          const displaySymbol0 = (token0Address.toLowerCase() === WSHM_ADDRESS.toLowerCase()) ? 'SHM' : symbol0;
+          const displaySymbol1 = (token1Address.toLowerCase() === WSHM_ADDRESS.toLowerCase()) ? 'SHM' : symbol1;
+          
+          console.log(`Display as: ${displaySymbol0}/${displaySymbol1}`);
+          
+          const poolShare = (BigInt(lpBalance) * BigInt(10000)) / BigInt(totalSupply);
+          const sharePercent = Number(poolShare) / 100;
+          
+          const amount0 = (BigInt(lpBalance) * BigInt(reserves.reserve0)) / BigInt(totalSupply);
+          const amount1 = (BigInt(lpBalance) * BigInt(reserves.reserve1)) / BigInt(totalSupply);
+          
+          positions.push({
+            pairAddress,
+            token0: { address: token0Address, symbol: displaySymbol0, name: name0 },
+            token1: { address: token1Address, symbol: displaySymbol1, name: name1 },
+            lpBalance: web3.utils.fromWei(lpBalance, 'ether'),
+            amount0: web3.utils.fromWei(amount0.toString(), 'ether'),
+            amount1: web3.utils.fromWei(amount1.toString(), 'ether'),
+            sharePercent: sharePercent.toFixed(4)
+          });
+        } else {
+          console.log("No balance in this pair");
+        }
+      } catch (error) {
+        console.error(`Error checking pair ${i}:`, error);
       }
     }
     
-    console.log(`Found ${positions.length} positions`);
+    console.log(`\n=== TOTAL POSITIONS FOUND: ${positions.length} ===`);
     
     if (pairSelect) {
       pairSelect.innerHTML = '<option value="">Select a liquidity pair</option>';
@@ -1560,8 +1584,8 @@ async function loadUserPositions() {
       if (positions.length === 0) {
         positionsContainer.innerHTML = `
           <div class="no-positions">
-            <p style="font-size: 1.2rem; margin-bottom: 10px;">📊 No positions yet</p>
-            <p>Add liquidity to create your first position</p>
+            <p style="font-size: 1.2rem; margin-bottom: 10px;">📊 No positions found</p>
+            <p>Check console (F12) for debugging info</p>
             <button class="action-btn" style="margin-top: 20px; max-width: 200px;" onclick="document.querySelector('[data-tab=add]').click()">
               Add Liquidity
             </button>
@@ -1588,9 +1612,14 @@ async function loadUserPositions() {
                 <span>${parseFloat(pos.lpBalance).toFixed(6)}</span>
               </div>
             </div>
-            <button class="action-btn" onclick="removeLiquidityFromCard('${pos.pairAddress}')" style="margin-top: 15px; width: 100%;">
-              Remove Liquidity
-            </button>
+            <div style="display: flex; gap: 10px; margin-top: 15px;">
+              <button class="action-btn" onclick="removeLiquidityFromCard('${pos.pairAddress}')" style="flex: 1;">
+                Remove Liquidity
+              </button>
+              <button class="action-btn" onclick="addLPToMetaMask('${pos.pairAddress}', '${pos.token0.symbol}', '${pos.token1.symbol}')" style="flex: 1; background: #764ba2;">
+                Add to MetaMask
+              </button>
+            </div>
           </div>
         `).join('');
       }
@@ -1599,7 +1628,7 @@ async function loadUserPositions() {
   } catch (error) {
     console.error('Error loading positions:', error);
     if (positionsContainer) {
-      positionsContainer.innerHTML = '<div class="no-positions"><p>Error loading positions. Please refresh.</p></div>';
+      positionsContainer.innerHTML = '<div class="no-positions"><p>Error loading positions. Check console for details.</p></div>';
     }
   }
 }
@@ -1687,6 +1716,36 @@ function showStatus(message, type, elementId = 'status-message') {
   }
 }
 
+
+async function addLPToMetaMask(pairAddress, symbol0, symbol1) {
+  try {
+    const pairContract = new web3.eth.Contract(PAIR_ABI, pairAddress);
+    const symbol = await pairContract.methods.symbol().call();
+    const decimals = await pairContract.methods.decimals().call();
+    
+    const wasAdded = await window.ethereum.request({
+      method: 'wallet_watchAsset',
+      params: {
+        type: 'ERC20',
+        options: {
+          address: pairAddress,
+          symbol: symbol,
+          decimals: Number(decimals),
+          image: 'https://raw.githubusercontent.com/BrunoMarshall/MintonDex/main/logos/lp-token.png'
+        }
+      }
+    });
+    
+    if (wasAdded) {
+      showStatus(`${symbol0}/${symbol1} LP token added to MetaMask!`, 'success', 'add-status');
+    }
+  } catch (error) {
+    console.error('Error adding LP to MetaMask:', error);
+    showStatus('Failed to add LP token to MetaMask', 'error', 'add-status');
+  }
+}
+
 window.selectToken = selectToken;
 window.loadTokenList = loadTokenList;
 window.removeLiquidityFromCard = removeLiquidityFromCard;
+window.addLPToMetaMask = addLPToMetaMask;
