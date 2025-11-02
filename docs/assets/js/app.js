@@ -1171,7 +1171,7 @@ async function addLiquidity() {
         console.log("Token Balance:", web3.utils.fromWei(tokenBalance, 'ether'));
         console.log("Token Required:", web3.utils.fromWei(tokenAmount, 'ether'));
         
-        if (tokenDecimals !== 18) {
+        if (Number(tokenDecimals) !== 18) {
           showStatus(`WARNING: Token has ${tokenDecimals} decimals (expected 18). Conversion may be incorrect.`, 'error', 'add-status');
           console.warn("Token decimals mismatch!");
         }
@@ -1199,9 +1199,7 @@ async function addLiquidity() {
           
           const approveTx = await tokenContract.methods.approve(ROUTER_ADDRESS, MAX_UINT256).send({
             from: currentAccount,
-            maxFeePerGas: web3.utils.toWei('3000', 'gwei'),
-            maxPriorityFeePerGas: web3.utils.toWei('3000', 'gwei'),
-            gas: 100000
+            gas: 150000
           });
           
           console.log("Approval TX:", approveTx.transactionHash);
@@ -1252,8 +1250,6 @@ async function addLiquidity() {
         ).send({
           from: currentAccount,
           value: ethAmount,
-          maxFeePerGas: web3.utils.toWei('3000', 'gwei'),
-          maxPriorityFeePerGas: web3.utils.toWei('3000', 'gwei'),
           gas: 3000000
         });
         
@@ -1314,9 +1310,7 @@ async function addLiquidity() {
         showStatus(`Approving ${window.selectedAddTokenA.symbol}...`, 'info', 'add-status');
         await tokenAContract.methods.approve(ROUTER_ADDRESS, MAX_UINT256).send({
           from: currentAccount,
-          maxFeePerGas: web3.utils.toWei('3000', 'gwei'),
-          maxPriorityFeePerGas: web3.utils.toWei('3000', 'gwei'),
-          gas: 100000
+          gas: 150000
         });
         await new Promise(resolve => setTimeout(resolve, 3000));
       }
@@ -1328,9 +1322,7 @@ async function addLiquidity() {
         showStatus(`Approving ${window.selectedAddTokenB.symbol}...`, 'info', 'add-status');
         await tokenBContract.methods.approve(ROUTER_ADDRESS, MAX_UINT256).send({
           from: currentAccount,
-          maxFeePerGas: web3.utils.toWei('3000', 'gwei'),
-          maxPriorityFeePerGas: web3.utils.toWei('3000', 'gwei'),
-          gas: 100000
+          gas: 150000
         });
         await new Promise(resolve => setTimeout(resolve, 3000));
       }
