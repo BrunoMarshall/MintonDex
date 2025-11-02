@@ -455,14 +455,14 @@ async function switchToShardeum() {
   try {
     await window.ethereum.request({
       method: 'wallet_switchEthereumChain',
-      params: [{ chainId: SHARDEUM_TESTNET.chainId }]
+      params: [{ chainId: SHARDEUM_MAINNET.chainId }]
     });
   } catch (error) {
     if (error.code === 4902) {
       try {
         await window.ethereum.request({
           method: 'wallet_addEthereumChain',
-          params: [SHARDEUM_TESTNET]
+          params: [SHARDEUM_MAINNET]
         });
       } catch (addError) {
         console.error('Error adding network:', addError);
