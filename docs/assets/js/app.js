@@ -496,7 +496,7 @@ async function updateConnectionStatus() {
   const shortAddress = `${currentAccount.slice(0, 6)}...${currentAccount.slice(-4)}`;
   
   if (connectionStatus) {
-    connectionStatus.textContent = `Shardeum Testnet | ${shortAddress}`;
+    connectionStatus.textContent = `Shardeum Mainnet | ${shortAddress}`;
     connectionStatus.style.display = 'inline';
   }
   if (disconnectButton) disconnectButton.style.display = 'inline-block';
