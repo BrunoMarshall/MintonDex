@@ -1010,9 +1010,13 @@ async function calculateLiquidityB() {
   }
   
   try {
+    // Convert NATIVE_SHM to WSHM_ADDRESS for getReserves call
+    const tokenAAddress = window.selectedAddTokenA.address === 'NATIVE_SHM' ? WSHM_ADDRESS : window.selectedAddTokenA.address;
+    const tokenBAddress = window.selectedAddTokenB.address === 'NATIVE_SHM' ? WSHM_ADDRESS : window.selectedAddTokenB.address;
+    
     const reserves = await routerContract.methods.getReserves(
-      window.selectedAddTokenA.address,
-      window.selectedAddTokenB.address
+      tokenAAddress,
+      tokenBAddress
     ).call();
     
     if (reserves.reserveA === '0' || reserves.reserveB === '0') {
@@ -1040,9 +1044,13 @@ async function calculateLiquidityA() {
   }
   
   try {
+    // Convert NATIVE_SHM to WSHM_ADDRESS for getReserves call
+    const tokenAAddress = window.selectedAddTokenA.address === 'NATIVE_SHM' ? WSHM_ADDRESS : window.selectedAddTokenA.address;
+    const tokenBAddress = window.selectedAddTokenB.address === 'NATIVE_SHM' ? WSHM_ADDRESS : window.selectedAddTokenB.address;
+    
     const reserves = await routerContract.methods.getReserves(
-      window.selectedAddTokenA.address,
-      window.selectedAddTokenB.address
+      tokenAAddress,
+      tokenBAddress
     ).call();
     
     if (reserves.reserveA === '0' || reserves.reserveB === '0') {
