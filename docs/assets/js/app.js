@@ -1487,6 +1487,8 @@ async function loadUserPositions() {
     const pairCount = await factoryContract.methods.allPairsLength().call();
     const positions = [];
     
+    console.log(`Checking ${pairCount} pairs...`);
+    
     for (let i = 0; i < pairCount; i++) {
       const pairAddress = await factoryContract.methods.allPairs(i).call();
       const pairContract = new web3.eth.Contract(PAIR_ABI, pairAddress);
@@ -1496,6 +1498,9 @@ async function loadUserPositions() {
       if (BigInt(lpBalance) > 0n) {
         const token0Address = await pairContract.methods.token0().call();
         const token1Address = await pairContract.methods.token1().call();
+        
+        console.log(`Found position in pair: ${pairAddress}`);
+        console.log(`Token0: ${token0Address}, Token1: ${token1Address}`);
         
         const token0Contract = new web3.eth.Contract(ERC20_ABI, token0Address);
         const token1Contract = new web3.eth.Contract(ERC20_ABI, token1Address);
@@ -1507,6 +1512,12 @@ async function loadUserPositions() {
           pairContract.methods.getReserves().call()
         ]);
         
+        // Convert WSHM to SHM for display
+        const displaySymbol0 = (token0Address.toLowerCase() === WSHM_ADDRESS.toLowerCase()) ? 'SHM' : symbol0;
+        const displaySymbol1 = (token1Address.toLowerCase() === WSHM_ADDRESS.toLowerCase()) ? 'SHM' : symbol1;
+        
+        console.log(`Symbols: ${displaySymbol0}/${displaySymbol1}`);
+        
         const poolShare = (BigInt(lpBalance) * BigInt(10000)) / BigInt(totalSupply);
         const sharePercent = Number(poolShare) / 100;
         
@@ -1515,8 +1526,8 @@ async function loadUserPositions() {
         
         positions.push({
           pairAddress,
-          token0: { address: token0Address, symbol: symbol0 },
-          token1: { address: token1Address, symbol: symbol1 },
+          token0: { address: token0Address, symbol: displaySymbol0 },
+          token1: { address: token1Address, symbol: displaySymbol1 },
           lpBalance: web3.utils.fromWei(lpBalance, 'ether'),
           amount0: web3.utils.fromWei(amount0.toString(), 'ether'),
           amount1: web3.utils.fromWei(amount1.toString(), 'ether'),
@@ -1524,6 +1535,8 @@ async function loadUserPositions() {
         });
       }
     }
+    
+    console.log(`Found ${positions.length} positions`);
     
     if (pairSelect) {
       pairSelect.innerHTML = '<option value="">Select a liquidity pair</option>';
@@ -1547,7 +1560,7 @@ async function loadUserPositions() {
       if (positions.length === 0) {
         positionsContainer.innerHTML = `
           <div class="no-positions">
-            <p style="font-size: 1.2rem; margin-bottom: 10px;">ðŸ“Š No positions yet</p>
+            <p style="font-size: 1.2rem; margin-bottom: 10px;">📊 No positions yet</p>
             <p>Add liquidity to create your first position</p>
             <button class="action-btn" style="margin-top: 20px; max-width: 200px;" onclick="document.querySelector('[data-tab=add]').click()">
               Add Liquidity
