@@ -30,176 +30,124 @@
 
     <div style="background: #e8f0fe; padding: 15px; text-align: center; border-bottom: 2px solid #667eea; font-size: 0.95rem;">
         <strong>🔒 Official MintonDex</strong> | 
-        Open Source DEX on Shardeum Testnet | 
+        Open Source DEX on Shardeum Mainnet | 
         <a href="https://github.com/BrunoMarshall/MintonDex" target="_blank" style="color: #667eea; text-decoration: underline; font-weight: 600;">View Code on GitHub</a> |
-        <a href="https://explorer-mezame.shardeum.org/address/0x1b5737e10f67bb6ac6355c35391cbab1a55ce98e" target="_blank" style="color: #667eea; text-decoration: underline;">Verified Contracts</a>
+        <a href="https://explorer.shardeum.org/address/0x13B94479b80bcC600B46A14BEbCE378DA16210d6" target="_blank" style="color: #667eea; text-decoration: underline;">Verified Contracts</a>
     </div>
 
     <main>
-        <!-- MASCOT REMOVED FOR CLEANER UX -->
-        
         <section class="pool-container">
-            <div class="pool-tabs">
+            <h2>Liquidity</h2>
+
+            <div class="tab-container">
                 <button class="tab-btn active" data-tab="add">Add Liquidity</button>
                 <button class="tab-btn" data-tab="remove">Remove Liquidity</button>
-                <button class="tab-btn" data-tab="positions">My Positions</button>
             </div>
 
             <!-- Add Liquidity Tab -->
             <div class="tab-content active" id="add-tab">
-                <h1>Add Liquidity</h1>
-                <p>Provide liquidity and earn 0.3% fees on all trades</p>
-                
-                <div class="pool-box">
-                    <div class="token-input-group">
-                        <label>Token A</label>
-                        <div class="input-row">
-                            <input type="text" id="add-amount-a" placeholder="0.0" class="amount-input">
-                            <button class="token-select" id="select-add-token-a">
-                                <span id="add-token-a-symbol">Select Token</span>
-                            </button>
-                        </div>
-                        <div class="balance-row">
-                            <span id="add-balance-a">Balance: 0.00</span>
-                        </div>
+                <div class="token-input-group">
+                    <label>Token A</label>
+                    <div class="input-row">
+                        <input type="text" id="add-token-a-amount" placeholder="0.0" class="amount-input">
+                        <button class="token-select" id="select-add-token-a">
+                            <span>Select token</span>
+                        </button>
                     </div>
-
-                    <div class="plus-icon">+</div>
-
-                    <div class="token-input-group">
-                        <label>Token B</label>
-                        <div class="input-row">
-                            <input type="text" id="add-amount-b" placeholder="0.0" class="amount-input">
-                            <button class="token-select" id="select-add-token-b">
-                                <span id="add-token-b-symbol">Select Token</span>
-                            </button>
-                        </div>
-                        <div class="balance-row">
-                            <span id="add-balance-b">Balance: 0.00</span>
-                        </div>
+                    <div class="balance-row">
+                        <span id="add-balance-a">Balance: 0.00</span>
+                        <button class="max-btn" id="max-add-a">MAX</button>
                     </div>
-
-                    <div class="pool-details" id="add-pool-details" style="display: none;">
-                        <div class="detail-row">
-                            <span>Pool Share:</span>
-                            <span id="pool-share">-</span>
-                        </div>
-                        <div class="detail-row">
-                            <span>LP Tokens to Receive:</span>
-                            <span id="lp-tokens">-</span>
-                        </div>
-                        <div class="detail-row">
-                            <span>Exchange Rate:</span>
-                            <span id="add-exchange-rate">-</span>
-                        </div>
-                    </div>
-
-                    <button class="action-btn" id="add-liquidity-btn">Connect Wallet</button>
-                    <div id="add-status" class="status-message"></div>
                 </div>
 
-                <div class="info-section" style="margin-top: 20px; padding: 16px; background: #f8f9fa; border-radius: 12px;">
-                    <p style="color: #666; font-size: 0.9rem; margin: 0;">
-                        <strong>💡 Tip:</strong> When you add liquidity, you receive LP tokens representing your share of the pool. 
-                        You earn 0.3% of all trades proportional to your share.
-                    </p>
+                <div style="text-align: center; margin: 0.5rem 0; color: #667eea; font-size: 1.2rem;">+</div>
+
+                <div class="token-input-group">
+                    <label>Token B</label>
+                    <div class="input-row">
+                        <input type="text" id="add-token-b-amount" placeholder="0.0" class="amount-input">
+                        <button class="token-select" id="select-add-token-b">
+                            <span>Select token</span>
+                        </button>
+                    </div>
+                    <div class="balance-row">
+                        <span id="add-balance-b">Balance: 0.00</span>
+                        <button class="max-btn" id="max-add-b">MAX</button>
+                    </div>
                 </div>
+
+                <div class="pool-info" id="add-pool-info" style="display: none;">
+                    <div class="pool-stat">
+                        <span class="pool-stat-label">Pool Share:</span>
+                        <span class="pool-stat-value" id="pool-share">-</span>
+                    </div>
+                    <div class="pool-stat">
+                        <span class="pool-stat-label">Rate:</span>
+                        <span class="pool-stat-value" id="add-rate">-</span>
+                    </div>
+                </div>
+
+                <button class="action-btn" id="add-liquidity-btn">Connect Wallet</button>
+                <div id="add-status" class="status-message"></div>
             </div>
 
             <!-- Remove Liquidity Tab -->
             <div class="tab-content" id="remove-tab">
-                <h1>Remove Liquidity</h1>
-                <p>Withdraw your tokens from the pool</p>
-                
-                <div class="pool-box">
-                    <div class="token-pair-select">
-                        <label>Select Pair</label>
-                        <select id="pair-select" class="pair-dropdown">
-                            <option value="">Select a liquidity pair</option>
-                        </select>
+                <div class="token-input-group">
+                    <label>LP Tokens to Remove</label>
+                    <div class="input-row">
+                        <input type="text" id="remove-lp-amount" placeholder="0.0" class="amount-input">
                     </div>
-
-                    <div class="amount-slider">
-                        <label>Amount to Remove: <span id="remove-percentage">0</span>%</label>
-                        <input type="range" id="remove-slider" min="0" max="100" value="0" class="slider">
-                        <div class="slider-labels">
-                            <button class="preset-btn" data-value="25">25%</button>
-                            <button class="preset-btn" data-value="50">50%</button>
-                            <button class="preset-btn" data-value="75">75%</button>
-                            <button class="preset-btn" data-value="100">MAX</button>
-                        </div>
+                    <div class="balance-row">
+                        <span id="lp-balance">Balance: 0.00 LP</span>
+                        <button class="max-btn" id="max-remove-lp">MAX</button>
                     </div>
-
-                    <div class="pool-details" id="remove-pool-details" style="display: none;">
-                        <div class="detail-row" style="border-bottom: 1px solid #f0f0f0; padding-bottom: 12px; margin-bottom: 12px;">
-                            <span style="font-weight: 600;">You will receive:</span>
-                        </div>
-                        <div class="detail-row">
-                            <span id="receive-token-a-label">Token A:</span>
-                            <span id="receive-amount-a">0.00</span>
-                        </div>
-                        <div class="detail-row">
-                            <span id="receive-token-b-label">Token B:</span>
-                            <span id="receive-amount-b">0.00</span>
-                        </div>
-                        <div class="detail-row" style="border-top: 1px solid #f0f0f0; padding-top: 12px; margin-top: 12px;">
-                            <span>LP Tokens to Burn:</span>
-                            <span id="lp-to-burn">0.00</span>
-                        </div>
-                    </div>
-
-                    <button class="action-btn" id="remove-liquidity-btn">Connect Wallet</button>
-                    <div id="remove-status" class="status-message"></div>
                 </div>
 
-                <div class="info-section" style="margin-top: 20px; padding: 16px; background: #fff3cd; border-radius: 12px; border: 1px solid #ffc107;">
-                    <p style="color: #856404; font-size: 0.9rem; margin: 0;">
-                        <strong>⚠️ Note:</strong> Removing liquidity will burn your LP tokens and return the underlying tokens. 
-                        Make sure you understand the current pool ratio before removing.
-                    </p>
-                </div>
-            </div>
-
-            <!-- My Positions Tab -->
-            <div class="tab-content" id="positions-tab">
-                <h1>My Liquidity Positions</h1>
-                <p>View and manage your liquidity pools</p>
-                
-                <div id="positions-container" class="positions-grid">
-                    <div class="no-positions">
-                        <p style="font-size: 1.2rem; margin-bottom: 10px;">📊 No positions yet</p>
-                        <p>Connect your wallet to see your positions</p>
-                        <button class="action-btn" style="margin-top: 20px; max-width: 200px;" onclick="document.querySelector('[data-tab=add]').click()">
-                            Add Liquidity
+                <div class="token-input-group">
+                    <label>Select Pool</label>
+                    <div class="input-row">
+                        <button class="token-select" id="select-remove-token-a" style="flex: 1;">
+                            <span>Select token A</span>
+                        </button>
+                        <button class="token-select" id="select-remove-token-b" style="flex: 1;">
+                            <span>Select token B</span>
                         </button>
                     </div>
                 </div>
+
+                <div class="pool-info" id="remove-pool-info" style="display: none;">
+                    <div class="pool-stat">
+                        <span class="pool-stat-label">You will receive:</span>
+                        <span class="pool-stat-value" id="remove-amounts">-</span>
+                    </div>
+                </div>
+
+                <button class="action-btn" id="remove-liquidity-btn">Connect Wallet</button>
+                <div id="remove-status" class="status-message"></div>
             </div>
 
-            <div class="info-section" style="margin-top: 30px; text-align: center;">
-                <p style="color: #666; font-size: 0.9rem;">
-                    <strong>Need tokens to provide liquidity?</strong> Create them on 
-                    <a href="https://mintonshardeum.com" target="_blank" style="color: #667eea; text-decoration: underline;">MintonShardeum</a>
+            <div class="info-section" style="margin-top: 20px;">
+                <p style="color: #1967d2; font-size: 0.9rem; margin: 0;">
+                    <strong>ℹ️ About Liquidity</strong><br>
+                    By adding liquidity, you earn 0.3% of all trades on this pair proportional to your share of the pool. 
+                    Fees are added to the pool and accrue in real-time. You can withdraw your liquidity at any time.
                 </p>
             </div>
         </section>
-
-        <!-- Token Selection Modal -->
-        <div id="token-modal" class="modal">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h2>Select a Token</h2>
-                    <button class="close-modal">&times;</button>
-                </div>
-                <input type="text" id="token-search" placeholder="Search by name, symbol or paste address..." class="token-search">
-                <div class="token-list" id="token-list">
-                    <div style="text-align: center; padding: 40px; color: #999;">
-                        <p>Loading tokens...</p>
-                    </div>
-                </div>
-            </div>
-        </div>
     </main>
+
+    <!-- Token Selection Modal -->
+    <div class="token-modal" id="token-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Select a token</h3>
+                <button class="close-modal" id="close-modal">×</button>
+            </div>
+            <input type="text" id="token-search" placeholder="Search name or paste address">
+            <div class="token-list" id="token-list"></div>
+        </div>
+    </div>
 
     <footer>
         <div class="social-links">
@@ -213,14 +161,11 @@
         <div style="margin-top: 15px;">
             <a href="https://mintonshardeum.com" target="_blank" style="color: #667eea; text-decoration: none; font-weight: 600;">MintonShardeum</a>
             <span style="margin: 0 10px; color: #999;">|</span>
-            <a href="https://explorer-mezame.shardeum.org/" target="_blank" style="color: #667eea; text-decoration: none;">Explorer</a>
-            <span style="margin: 0 10px; color: #999;">|</span>
-            <a href="https://github.com/BrunoMarshall/MintonDex" target="_blank" style="color: #667eea; text-decoration: none;">GitHub</a>
+            <a href="https://explorer.shardeum.org/" target="_blank" style="color: #667eea; text-decoration: none;">Explorer</a>
         </div>
         <img src="assets/images/Shardeum_logo_white.png" alt="Shardeum Logo" class="shardeum-logo" style="margin-top: 15px;">
-        <p style="margin-top: 10px; color: #999; font-size: 0.85rem;">MintonDex v1.0 - Built on Shardeum</p>
     </footer>
-
+    
     <script src="assets/js/web3.min.js"></script>
     <script src="assets/js/app.js"></script>
 </body>

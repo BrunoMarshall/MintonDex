@@ -1,9 +1,9 @@
 const web3 = new Web3(window.ethereum);
 
 // Contract Addresses
-const FACTORY_ADDRESS = "0x1b5737e10f67bb6ac6355c35391cbab1a55ce98e";
-const ROUTER_ADDRESS = "0xc23ae3a1e9bfa54e43e18487f4c68cc7916987d1";
-const WSHM_ADDRESS = "0x9988864cb024f0a647c205dbbf96535b0072f40b";
+const FACTORY_ADDRESS = "0x13B94479b80bcC600B46A14BEbCE378DA16210d6";
+const ROUTER_ADDRESS = "0x9988864cb024f0a647c205dbbf96535b0072f40b";
+const WSHM_ADDRESS = "0x73653a3fb19e2b8ac5f88f1603eeb7ba164cfbeb";
 
 // Special SHM Token Object
 const SHM_TOKEN = {
@@ -291,16 +291,12 @@ const factoryContract = new web3.eth.Contract(FACTORY_ABI, FACTORY_ADDRESS);
 const routerContract = new web3.eth.Contract(ROUTER_ABI, ROUTER_ADDRESS);
 
 // Network Configuration
-const SHARDEUM_TESTNET = {
-  chainId: '0x1FB7',
-  chainName: 'Shardeum EVM Testnet',
-  nativeCurrency: {
-    name: 'Shardeum',
-    symbol: 'SHM',
-    decimals: 18
-  },
-  rpcUrls: ['https://api-mezame.shardeum.org/'],
-  blockExplorerUrls: ['https://explorer-mezame.shardeum.org/']
+const SHARDEUM_MAINNET = {
+  chainId: '0x1FB6',  // 8118 in hex
+  chainName: 'Shardeum',
+  rpcUrls: ['https://api.shardeum.org/'],
+  nativeCurrency: { name: 'SHM', symbol: 'SHM', decimals: 18 },
+  blockExplorerUrls: ['https://explorer.shardeum.org/']
 };
 
 // Global State
@@ -437,7 +433,7 @@ async function connectWallet() {
     currentAccount = accounts[0];
 
     const chainId = await web3.eth.getChainId();
-    if (Number(chainId) !== 8119) {
+    if (Number(chainId) !== 8118) {
       await switchToShardeum();
     }
 

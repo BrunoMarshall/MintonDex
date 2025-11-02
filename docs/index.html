@@ -4,10 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MintonDex - Decentralized Exchange</title>
-    <meta name="description" content="Official MintonDex - Decentralized Exchange on Shardeum Testnet. Open source and verified.">
+    <meta name="description" content="Official MintonDex - Decentralized Exchange on Shardeum Mainnet. Open source and verified.">
     <link rel="canonical" href="https://mintondex.com/">
     <meta property="og:title" content="MintonDex - Decentralized Exchange">
-    <meta property="og:description" content="Official MintonDex DEX on Shardeum. Open source and community-driven.">
+    <meta property="og:description" content="Official MintonDex DEX on Shardeum Mainnet. Open source and community-driven.">
     <meta property="og:url" content="https://mintondex.com/">
     <link rel="stylesheet" href="assets/css/styles.css">
     <link rel="icon" href="assets/images/mintondex_favicon.png">
@@ -30,98 +30,80 @@
     
     <div style="background: #e8f0fe; padding: 15px; text-align: center; border-bottom: 2px solid #667eea; font-size: 0.95rem;">
         <strong>🔒 Official MintonDex</strong> | 
-        Open Source DEX on Shardeum Testnet | 
+        Open Source DEX on Shardeum Mainnet | 
         <a href="https://github.com/BrunoMarshall/MintonDex" target="_blank" style="color: #667eea; text-decoration: underline; font-weight: 600;">View Code on GitHub</a> |
-        <a href="https://explorer-mezame.shardeum.org/address/0x1b5737e10f67bb6ac6355c35391cbab1a55ce98e" target="_blank" style="color: #667eea; text-decoration: underline;">Verified Contracts</a>
+        <a href="https://explorer.shardeum.org/address/0x13B94479b80bcC600B46A14BEbCE378DA16210d6" target="_blank" style="color: #667eea; text-decoration: underline;">Verified Contracts</a>
     </div>
     
     <main>
-        <!-- MASCOT SECTION REMOVED FOR CLEANER UX -->
-        
         <section class="swap-container">
-            <h1>Swap Tokens</h1>
-            <p>Trade tokens instantly on Shardeum</p>
-            
-            <div class="swap-box">
-                <div class="token-input-group">
-                    <label>From</label>
-                    <div class="input-row">
-                        <input type="text" id="input-amount" placeholder="0.0" class="amount-input">
-                        <button class="token-select" id="select-token-in">
-                            <span id="token-in-symbol">Select Token</span>
-                        </button>
-                    </div>
-                    <div class="balance-row">
-                        <span id="balance-in">Balance: 0.00</span>
-                        <button class="max-btn" id="max-btn">MAX</button>
-                    </div>
-                </div>
-
-                <div class="swap-arrow">
-                    <button id="swap-direction">⇅</button>
-                </div>
-
-                <div class="token-input-group">
-                    <label>To</label>
-                    <div class="input-row">
-                        <input type="text" id="output-amount" placeholder="0.0" class="amount-input" readonly>
-                        <button class="token-select" id="select-token-out">
-                            <span id="token-out-symbol">Select Token</span>
-                        </button>
-                    </div>
-                    <div class="balance-row">
-                        <span id="balance-out">Balance: 0.00</span>
-                    </div>
-                </div>
-
-                <div class="swap-details" id="swap-details" style="display: none;">
-                    <div class="detail-row">
-                        <span>Exchange Rate:</span>
-                        <span id="exchange-rate">-</span>
-                    </div>
-                    <div class="detail-row">
-                        <span>Price Impact:</span>
-                        <span id="price-impact">-</span>
-                    </div>
-                    <div class="detail-row">
-                        <span>Fee (0.3%):</span>
-                        <span id="swap-fee">-</span>
-                    </div>
-                </div>
-
-                <button class="action-btn" id="swap-btn">Connect Wallet</button>
-                <div id="status-message" class="status-message"></div>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                <h2 style="margin: 0;">Swap</h2>
             </div>
 
-            <div class="info-section" style="margin-top: 30px; text-align: center;">
-                <p style="color: #666; font-size: 0.9rem;">
-                    <strong>New to MintonDex?</strong> Create your own tokens on 
-                    <a href="https://mintonshardeum.com" target="_blank" style="color: #667eea; text-decoration: underline;">MintonShardeum</a>
-                    and start trading here!
-                </p>
-                <p style="color: #666; font-size: 0.85rem; margin-top: 10px;">
-                    Want to list your token? Check our <a href="https://github.com/BrunoMarshall/MintonDex/blob/main/TOKEN_SUBMISSION_GUIDE.md" target="_blank" style="color: #667eea;">submission guide</a>
-                </p>
+            <div class="token-input-group">
+                <label>You pay</label>
+                <div class="input-row">
+                    <input type="text" id="token-in-amount" placeholder="0.0" class="amount-input">
+                    <button class="token-select" id="select-token-in">
+                        <span>Select token</span>
+                    </button>
+                </div>
+                <div class="balance-row">
+                    <span id="balance-in">Balance: 0.00</span>
+                    <button class="max-btn" id="max-btn-in">MAX</button>
+                </div>
+            </div>
+
+            <div class="swap-arrow">
+                <div style="font-size: 1.5rem; color: #667eea;">↓</div>
+            </div>
+
+            <div class="token-input-group">
+                <label>You receive</label>
+                <div class="input-row">
+                    <input type="text" id="token-out-amount" placeholder="0.0" class="amount-input" readonly>
+                    <button class="token-select" id="select-token-out">
+                        <span>Select token</span>
+                    </button>
+                </div>
+                <div class="balance-row">
+                    <span id="balance-out">Balance: 0.00</span>
+                </div>
+            </div>
+
+            <button class="action-btn" id="swap-btn">Connect Wallet</button>
+            <div id="status-message" class="status-message"></div>
+
+            <div class="info-section" style="margin-top: 20px; padding: 16px; background: #f7f8fa; border-radius: 12px;">
+                <div class="pool-stat">
+                    <span class="pool-stat-label">Rate:</span>
+                    <span class="pool-stat-value" id="exchange-rate">-</span>
+                </div>
+                <div class="pool-stat">
+                    <span class="pool-stat-label">Price Impact:</span>
+                    <span class="pool-stat-value" id="price-impact">-</span>
+                </div>
+                <div class="pool-stat">
+                    <span class="pool-stat-label">Fee (0.3%):</span>
+                    <span class="pool-stat-value" id="swap-fee">-</span>
+                </div>
             </div>
         </section>
-
-        <!-- Token Selection Modal -->
-        <div id="token-modal" class="modal">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h2>Select a Token</h2>
-                    <button class="close-modal">&times;</button>
-                </div>
-                <input type="text" id="token-search" placeholder="Search by name, symbol or paste address..." class="token-search">
-                <div class="token-list" id="token-list">
-                    <div style="text-align: center; padding: 40px; color: #999;">
-                        <p>Loading tokens...</p>
-                    </div>
-                </div>
-            </div>
-        </div>
     </main>
-    
+
+    <!-- Token Selection Modal -->
+    <div class="token-modal" id="token-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Select a token</h3>
+                <button class="close-modal" id="close-modal">×</button>
+            </div>
+            <input type="text" id="token-search" placeholder="Search name or paste address">
+            <div class="token-list" id="token-list"></div>
+        </div>
+    </div>
+
     <footer>
         <div class="social-links">
             <a href="https://discord.com/invite/shardeum" target="_blank"><img src="assets/images/discord.svg" alt="Discord"></a>
@@ -134,7 +116,7 @@
         <div style="margin-top: 15px;">
             <a href="https://mintonshardeum.com" target="_blank" style="color: #667eea; text-decoration: none; font-weight: 600;">MintonShardeum</a>
             <span style="margin: 0 10px; color: #999;">|</span>
-            <a href="https://explorer-mezame.shardeum.org/" target="_blank" style="color: #667eea; text-decoration: none;">Explorer</a>
+            <a href="https://explorer.shardeum.org/" target="_blank" style="color: #667eea; text-decoration: none;">Explorer</a>
         </div>
         <img src="assets/images/Shardeum_logo_white.png" alt="Shardeum Logo" class="shardeum-logo" style="margin-top: 15px;">
     </footer>
