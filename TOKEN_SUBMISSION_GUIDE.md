@@ -4,7 +4,7 @@
 
 \## Requirements
 
-\- Token must be deployed on Shardeum EVM Testnet (Chain ID: 8119)
+\- Token must be deployed on Shardeum Mainnet (Chain ID: 8118)
 
 \- Token must be an ERC-20 standard token
 
@@ -14,7 +14,7 @@
 
 \## Submission Process
 
-For now, you can contact us in the Shardeum discord Group, we Can help.
+For now, use our Minton´s help here: https://mintonshardeum.com/submit-token.html
 otherwise:
 
 
