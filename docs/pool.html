@@ -37,117 +37,139 @@
 
     <main>
         <section class="pool-container">
-            <h2>Liquidity</h2>
+            <h1>Liquidity</h1>
+            <p>Add or remove liquidity to earn fees</p>
 
-            <div class="tab-container">
+            <div class="pool-tabs">
                 <button class="tab-btn active" data-tab="add">Add Liquidity</button>
                 <button class="tab-btn" data-tab="remove">Remove Liquidity</button>
+                <button class="tab-btn" data-tab="positions">Your Positions</button>
             </div>
 
             <!-- Add Liquidity Tab -->
             <div class="tab-content active" id="add-tab">
-                <div class="token-input-group">
-                    <label>Token A</label>
-                    <div class="input-row">
-                        <input type="text" id="add-token-a-amount" placeholder="0.0" class="amount-input">
-                        <button class="token-select" id="select-add-token-a">
-                            <span>Select token</span>
-                        </button>
+                <div class="pool-box">
+                    <div class="token-input-group">
+                        <label>Token A</label>
+                        <div class="input-row">
+                            <input type="text" id="add-amount-a" placeholder="0.0" class="amount-input">
+                            <button class="token-select" id="select-add-token-a">
+                                <span id="add-token-a-symbol">Select token</span>
+                            </button>
+                        </div>
+                        <div class="balance-row">
+                            <span id="add-balance-a">Balance: 0.00</span>
+                            <button class="max-btn" id="max-add-a">MAX</button>
+                        </div>
                     </div>
-                    <div class="balance-row">
-                        <span id="add-balance-a">Balance: 0.00</span>
-                        <button class="max-btn" id="max-add-a">MAX</button>
+
+                    <div class="plus-icon">+</div>
+
+                    <div class="token-input-group">
+                        <label>Token B</label>
+                        <div class="input-row">
+                            <input type="text" id="add-amount-b" placeholder="0.0" class="amount-input">
+                            <button class="token-select" id="select-add-token-b">
+                                <span id="add-token-b-symbol">Select token</span>
+                            </button>
+                        </div>
+                        <div class="balance-row">
+                            <span id="add-balance-b">Balance: 0.00</span>
+                            <button class="max-btn" id="max-add-b">MAX</button>
+                        </div>
+                    </div>
+
+                    <button class="action-btn" id="add-liquidity-btn">Connect Wallet</button>
+                    <div id="add-status" class="status-message"></div>
+
+                    <div class="pool-details" id="add-pool-details" style="display: none;">
+                        <div class="detail-row">
+                            <span>Share of Pool</span>
+                            <span id="pool-share">-</span>
+                        </div>
+                        <div class="detail-row">
+                            <span>Exchange Rate</span>
+                            <span id="add-rate">-</span>
+                        </div>
                     </div>
                 </div>
-
-                <div style="text-align: center; margin: 0.5rem 0; color: #667eea; font-size: 1.2rem;">+</div>
-
-                <div class="token-input-group">
-                    <label>Token B</label>
-                    <div class="input-row">
-                        <input type="text" id="add-token-b-amount" placeholder="0.0" class="amount-input">
-                        <button class="token-select" id="select-add-token-b">
-                            <span>Select token</span>
-                        </button>
-                    </div>
-                    <div class="balance-row">
-                        <span id="add-balance-b">Balance: 0.00</span>
-                        <button class="max-btn" id="max-add-b">MAX</button>
-                    </div>
-                </div>
-
-                <div class="pool-info" id="add-pool-info" style="display: none;">
-                    <div class="pool-stat">
-                        <span class="pool-stat-label">Pool Share:</span>
-                        <span class="pool-stat-value" id="pool-share">-</span>
-                    </div>
-                    <div class="pool-stat">
-                        <span class="pool-stat-label">Rate:</span>
-                        <span class="pool-stat-value" id="add-rate">-</span>
-                    </div>
-                </div>
-
-                <button class="action-btn" id="add-liquidity-btn">Connect Wallet</button>
-                <div id="add-status" class="status-message"></div>
             </div>
 
             <!-- Remove Liquidity Tab -->
             <div class="tab-content" id="remove-tab">
-                <div class="token-input-group">
-                    <label>LP Tokens to Remove</label>
-                    <div class="input-row">
-                        <input type="text" id="remove-lp-amount" placeholder="0.0" class="amount-input">
+                <div class="pool-box">
+                    <div class="token-pair-select">
+                        <label>Select Pair</label>
+                        <select class="pair-dropdown" id="remove-pair-select">
+                            <option value="">Select a liquidity pool</option>
+                        </select>
                     </div>
-                    <div class="balance-row">
-                        <span id="lp-balance">Balance: 0.00 LP</span>
-                        <button class="max-btn" id="max-remove-lp">MAX</button>
+
+                    <div class="amount-slider">
+                        <label>Amount to Remove</label>
+                        <input type="range" min="0" max="100" value="0" class="slider" id="remove-slider">
+                        <div class="slider-labels">
+                            <button class="preset-btn" data-value="25">25%</button>
+                            <button class="preset-btn" data-value="50">50%</button>
+                            <button class="preset-btn" data-value="75">75%</button>
+                            <button class="preset-btn" data-value="100">MAX</button>
+                        </div>
+                        <div style="text-align: center; margin-top: 16px; font-size: 1.5rem; font-weight: 700; color: #667eea;">
+                            <span id="remove-percentage">0</span>%
+                        </div>
+                    </div>
+
+                    <button class="action-btn" id="remove-liquidity-btn">Connect Wallet</button>
+                    <div id="remove-status" class="status-message"></div>
+
+                    <div class="pool-details" id="remove-pool-details" style="display: none;">
+                        <div class="detail-row">
+                            <span>You will receive</span>
+                            <span id="remove-amounts">-</span>
+                        </div>
                     </div>
                 </div>
-
-                <div class="token-input-group">
-                    <label>Select Pool</label>
-                    <div class="input-row">
-                        <button class="token-select" id="select-remove-token-a" style="flex: 1;">
-                            <span>Select token A</span>
-                        </button>
-                        <button class="token-select" id="select-remove-token-b" style="flex: 1;">
-                            <span>Select token B</span>
-                        </button>
-                    </div>
-                </div>
-
-                <div class="pool-info" id="remove-pool-info" style="display: none;">
-                    <div class="pool-stat">
-                        <span class="pool-stat-label">You will receive:</span>
-                        <span class="pool-stat-value" id="remove-amounts">-</span>
-                    </div>
-                </div>
-
-                <button class="action-btn" id="remove-liquidity-btn">Connect Wallet</button>
-                <div id="remove-status" class="status-message"></div>
             </div>
 
-            <div class="info-section" style="margin-top: 20px;">
-                <p style="color: #1967d2; font-size: 0.9rem; margin: 0;">
-                    <strong>ℹ️ About Liquidity</strong><br>
-                    By adding liquidity, you earn 0.3% of all trades on this pair proportional to your share of the pool. 
+            <!-- Your Positions Tab -->
+            <div class="tab-content" id="positions-tab">
+                <div class="positions-grid" id="positions-list">
+                    <div class="no-positions">
+                        <p>No liquidity positions found</p>
+                        <p style="margin-top: 10px; font-size: 0.9rem; color: #999;">
+                            Add liquidity to a pool to see your positions here
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="info-section" style="margin-top: 30px;">
+                <p style="color: #666; font-size: 0.9rem; margin: 0;">
+                    <strong>ℹ️ About Liquidity Pools:</strong> By adding liquidity, you earn 0.3% of all trades on this pair proportional to your share of the pool. 
                     Fees are added to the pool and accrue in real-time. You can withdraw your liquidity at any time.
+                </p>
+                <p style="color: #666; font-size: 0.85rem; margin-top: 10px;">
+                    <strong>⚠️ Impermanent Loss:</strong> Be aware that providing liquidity may result in impermanent loss if token prices diverge significantly.
                 </p>
             </div>
         </section>
-    </main>
 
-    <!-- Token Selection Modal -->
-    <div class="token-modal" id="token-modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3>Select a token</h3>
-                <button class="close-modal" id="close-modal">×</button>
+        <!-- Token Selection Modal -->
+        <div id="token-modal" class="token-modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>Select a Token</h2>
+                    <button class="close-modal">&times;</button>
+                </div>
+                <input type="text" id="token-search" placeholder="Search by name, symbol or paste address..." class="token-search">
+                <div class="token-list" id="token-list">
+                    <div style="text-align: center; padding: 40px; color: #999;">
+                        <p>Loading tokens...</p>
+                    </div>
+                </div>
             </div>
-            <input type="text" id="token-search" placeholder="Search name or paste address">
-            <div class="token-list" id="token-list"></div>
         </div>
-    </div>
+    </main>
 
     <footer>
         <div class="social-links">

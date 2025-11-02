@@ -36,96 +36,101 @@
     </div>
 
     <main>
-        <section class="wrap-container">
-            <h2>Wrap SHM</h2>
+        <section class="swap-container">
+            <h1>Wrap SHM</h1>
+            <p>Convert between SHM and WSHM (1:1)</p>
 
-            <div class="tab-container">
+            <div class="pool-tabs">
                 <button class="tab-btn active" data-tab="wrap">Wrap</button>
                 <button class="tab-btn" data-tab="unwrap">Unwrap</button>
             </div>
 
             <!-- Wrap Tab -->
             <div class="tab-content active" id="wrap-tab">
-                <div class="token-input-group">
-                    <label>You pay</label>
-                    <div class="input-row">
-                        <input type="text" id="wrap-amount" placeholder="0.0" class="amount-input">
-                        <button class="token-select" style="cursor: default; opacity: 0.8;">
-                            <span>SHM</span>
-                        </button>
+                <div class="swap-box">
+                    <div class="token-input-group">
+                        <label>You pay</label>
+                        <div class="input-row">
+                            <input type="text" id="wrap-amount" placeholder="0.0" class="amount-input">
+                            <button class="token-select" style="cursor: default; opacity: 0.8;">
+                                <span>SHM</span>
+                            </button>
+                        </div>
+                        <div class="balance-row">
+                            <span id="shm-balance">Balance: 0.00 SHM</span>
+                            <button class="max-btn" id="wrap-max-btn">MAX</button>
+                        </div>
                     </div>
-                    <div class="balance-row">
-                        <span id="shm-balance">Balance: 0.00 SHM</span>
-                        <button class="max-btn" id="wrap-max-btn">MAX</button>
-                    </div>
-                </div>
 
-                <div class="swap-arrow">
-                    <div style="font-size: 1.5rem; color: #667eea;">↓</div>
-                </div>
-
-                <div class="token-input-group">
-                    <label>You will receive</label>
-                    <div class="input-row">
-                        <input type="text" id="wrap-output" placeholder="0.0" class="amount-input" readonly>
-                        <button class="token-select" style="cursor: default; opacity: 0.8;">
-                            <span>WSHM</span>
-                        </button>
+                    <div class="swap-arrow">
+                        <button style="cursor: default;">↓</button>
                     </div>
-                    <div class="balance-row">
-                        <span id="wshm-balance">Balance: 0.00 WSHM</span>
-                    </div>
-                </div>
 
-                <button class="action-btn" id="wrap-btn">Connect Wallet</button>
-                <div id="wrap-status" class="status-message"></div>
+                    <div class="token-input-group">
+                        <label>You will receive</label>
+                        <div class="input-row">
+                            <input type="text" id="wrap-output" placeholder="0.0" class="amount-input" readonly>
+                            <button class="token-select" style="cursor: default; opacity: 0.8;">
+                                <span>WSHM</span>
+                            </button>
+                        </div>
+                        <div class="balance-row">
+                            <span id="wshm-balance">Balance: 0.00 WSHM</span>
+                        </div>
+                    </div>
+
+                    <button class="action-btn" id="wrap-btn">Connect Wallet</button>
+                    <div id="wrap-status" class="status-message"></div>
+                </div>
             </div>
 
             <!-- Unwrap Tab -->
             <div class="tab-content" id="unwrap-tab">
-                <div class="token-input-group">
-                    <label>You pay</label>
-                    <div class="input-row">
-                        <input type="text" id="unwrap-amount" placeholder="0.0" class="amount-input">
-                        <button class="token-select" style="cursor: default; opacity: 0.8;">
-                            <span>WSHM</span>
-                        </button>
+                <div class="swap-box">
+                    <div class="token-input-group">
+                        <label>You pay</label>
+                        <div class="input-row">
+                            <input type="text" id="unwrap-amount" placeholder="0.0" class="amount-input">
+                            <button class="token-select" style="cursor: default; opacity: 0.8;">
+                                <span>WSHM</span>
+                            </button>
+                        </div>
+                        <div class="balance-row">
+                            <span id="wshm-balance-unwrap">Balance: 0.00 WSHM</span>
+                            <button class="max-btn" id="unwrap-max-btn">MAX</button>
+                        </div>
                     </div>
-                    <div class="balance-row">
-                        <span id="wshm-balance-unwrap">Balance: 0.00 WSHM</span>
-                        <button class="max-btn" id="unwrap-max-btn">MAX</button>
-                    </div>
-                </div>
 
-                <div class="swap-arrow">
-                    <div style="font-size: 1.5rem; color: #667eea;">↓</div>
-                </div>
-
-                <div class="token-input-group">
-                    <label>You will receive</label>
-                    <div class="input-row">
-                        <input type="text" id="unwrap-output" placeholder="0.0" class="amount-input" readonly>
-                        <button class="token-select" style="cursor: default; opacity: 0.8;">
-                            <span>SHM</span>
-                        </button>
+                    <div class="swap-arrow">
+                        <button style="cursor: default;">↓</button>
                     </div>
-                    <div class="balance-row">
-                        <span id="shm-balance-unwrap">Balance: 0.00 SHM</span>
-                    </div>
-                </div>
 
-                <button class="action-btn" id="unwrap-btn">Connect Wallet</button>
-                <div id="unwrap-status" class="status-message"></div>
+                    <div class="token-input-group">
+                        <label>You will receive</label>
+                        <div class="input-row">
+                            <input type="text" id="unwrap-output" placeholder="0.0" class="amount-input" readonly>
+                            <button class="token-select" style="cursor: default; opacity: 0.8;">
+                                <span>SHM</span>
+                            </button>
+                        </div>
+                        <div class="balance-row">
+                            <span id="shm-balance-unwrap">Balance: 0.00 SHM</span>
+                        </div>
+                    </div>
+
+                    <button class="action-btn" id="unwrap-btn">Connect Wallet</button>
+                    <div id="unwrap-status" class="status-message"></div>
+                </div>
             </div>
 
-            <div class="info-section" style="margin-top: 20px; padding: 16px; background: #e8f0fe; border-radius: 12px;">
-                <p style="color: #1967d2; font-size: 0.9rem; margin: 0;">
+            <div class="info-section" style="margin-top: 30px;">
+                <p style="color: #666; font-size: 0.9rem; margin: 0;">
                     <strong>ℹ️ What is WSHM?</strong> Wrapped SHM (WSHM) is an ERC-20 token that represents SHM on a 1:1 basis. 
-                    You need WSHM to trade SHM on MintonDex. The conversion is always 1:1.
+                    You need WSHM to trade SHM on MintonDex. The conversion is always 1:1 with no fees.
                 </p>
             </div>
 
-            <div style="margin-top: 30px; padding: 20px; background: #f8f9fa; border-radius: 12px;">
+            <div style="margin-top: 20px; padding: 20px; background: #f8f9fa; border-radius: 12px;">
                 <h3 style="color: #667eea; margin-bottom: 10px; font-size: 1.1rem;">Contract Information</h3>
                 <p style="color: #666; font-size: 0.85rem; margin: 5px 0;">
                     <strong>WSHM Contract:</strong> 
@@ -135,6 +140,9 @@
                 </p>
                 <p style="color: #666; font-size: 0.85rem; margin: 5px 0;">
                     <strong>Exchange Rate:</strong> Always 1:1 (1 SHM = 1 WSHM)
+                </p>
+                <p style="color: #666; font-size: 0.85rem; margin: 5px 0;">
+                    <strong>Network:</strong> Shardeum Mainnet (Chain ID: 8118)
                 </p>
             </div>
 
@@ -169,7 +177,7 @@
     <script>
     // Wrap functionality - inline to avoid conflicts
     (function() {
-        const WSHM_ADDRESS = "0x73653a3fb19e2b8ac5f88f1603eeb7ba164cfbeb";
+        const WSHM_ADDRESS = "0x73653a3fb19e2b8ac5f88f1603eeb7ba164cfbeb"; // MAINNET WSHM
         
         const WSHM_ABI = [
           {
@@ -314,12 +322,10 @@
                 const tx = await wshmContract.methods.deposit().send({
                     from: accounts[0],
                     value: amountWei,
-                    maxFeePerGas: web3.utils.toWei('2500000', 'gwei'),
-                    maxPriorityFeePerGas: web3.utils.toWei('2500000', 'gwei'),
                     gas: 100000
                 });
 
-                showWrapStatus(`Successfully wrapped ${amount} SHM! <a href="https://explorer.shardeum.org/tx/${tx.transactionHash}" target="_blank">View Transaction</a>`, 'success', 'wrap-status');
+                showWrapStatus(`Successfully wrapped ${amount} SHM! <a href="https://explorer.shardeum.org/tx/${tx.transactionHash}" target="_blank" style="color: #667eea;">View Transaction</a>`, 'success', 'wrap-status');
                 
                 document.getElementById('wrap-amount').value = '';
                 document.getElementById('wrap-output').value = '';
@@ -350,12 +356,10 @@
 
                 const tx = await wshmContract.methods.withdraw(amountWei).send({
                     from: accounts[0],
-                    maxFeePerGas: web3.utils.toWei('2500000', 'gwei'),
-                    maxPriorityFeePerGas: web3.utils.toWei('2500000', 'gwei'),
                     gas: 100000
                 });
 
-                showWrapStatus(`Successfully unwrapped ${amount} WSHM! <a href="https://explorer.shardeum.org/tx/${tx.transactionHash}" target="_blank">View Transaction</a>`, 'success', 'unwrap-status');
+                showWrapStatus(`Successfully unwrapped ${amount} WSHM! <a href="https://explorer.shardeum.org/tx/${tx.transactionHash}" target="_blank" style="color: #667eea;">View Transaction</a>`, 'success', 'unwrap-status');
                 
                 document.getElementById('unwrap-amount').value = '';
                 document.getElementById('unwrap-output').value = '';
