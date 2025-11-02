@@ -1562,6 +1562,9 @@ async function loadUserPositions() {
     
     console.log(`\n=== TOTAL POSITIONS FOUND: ${positions.length} ===`);
     
+    console.log("positionsContainer element:", positionsContainer);
+    console.log("Is positionsContainer null?", positionsContainer === null);
+    
     if (pairSelect) {
       pairSelect.innerHTML = '<option value="">Select a liquidity pair</option>';
       positions.forEach(pos => {
@@ -1592,7 +1595,9 @@ async function loadUserPositions() {
           </div>
         `;
       } else {
-        positionsContainer.innerHTML = positions.map(pos => `
+        console.log("About to render", positions.length, "positions");
+        console.log("positionsContainer before setting HTML:", positionsContainer);
+        const html = positions.map(pos => `
           <div class="position-card">
             <div class="position-header">
               <h3>${pos.token0.symbol}/${pos.token1.symbol}</h3>
@@ -1622,7 +1627,15 @@ async function loadUserPositions() {
             </div>
           </div>
         `).join('');
+        
+        console.log("Generated HTML length:", html.length);
+        console.log("First 200 chars of HTML:", html.substring(0, 200));
+        
+        positionsContainer.innerHTML = html;
+        console.log("HTML inserted! positionsContainer.children.length:", positionsContainer.children.length);
       }
+    } else {
+      console.error("❌ positionsContainer is NULL!");
     }
     
   } catch (error) {
@@ -1634,10 +1647,18 @@ async function loadUserPositions() {
 }
 
 function updateRemoveDisplay(position) {
+  console.log("updateRemoveDisplay called with:", position);
+  
   const removeDetails = document.getElementById('remove-pool-details');
   if (removeDetails) {
-    document.getElementById('receive-token-a-label').textContent = `${position.token0.symbol}:`;
-    document.getElementById('receive-token-b-label').textContent = `${position.token1.symbol}:`;
+    // Try to update labels if they exist
+    const labelA = document.getElementById('receive-token-a-label');
+    const labelB = document.getElementById('receive-token-b-label');
+    
+    if (labelA) labelA.textContent = `${position.token0.symbol}:`;
+    if (labelB) labelB.textContent = `${position.token1.symbol}:`;
+    
+    // If labels don't exist, just show the details
     removeDetails.style.display = 'block';
   }
   
