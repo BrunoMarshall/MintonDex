@@ -153,10 +153,10 @@ main {
 }
 
 .swap-box, .pool-box {
-    background: #f8f9fa;
+    background: #e9ecef;  /* Darker grey background */
     padding: 24px;
     border-radius: 16px;
-    border: 2px solid #e9ecef;
+    border: 2px solid #dee2e6;  /* Slightly darker border */
     width: 100%;
     max-width: 100%;
 }
