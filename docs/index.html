@@ -37,73 +37,88 @@
     
     <main>
         <section class="swap-container">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
-                <h2 style="margin: 0;">Swap</h2>
+            <h1>Swap</h1>
+            <p>Trade tokens in an instant</p>
+
+            <div class="swap-box">
+                <div class="token-input-group">
+                    <label>You pay</label>
+                    <div class="input-row">
+                        <input type="text" id="input-amount" placeholder="0.0" class="amount-input">
+                        <button class="token-select" id="select-token-in">
+                            <span id="token-in-symbol">Select token</span>
+                        </button>
+                    </div>
+                    <div class="balance-row">
+                        <span id="balance-in">Balance: 0.00</span>
+                        <button class="max-btn" id="max-btn">MAX</button>
+                    </div>
+                </div>
+
+                <div class="swap-arrow">
+                    <button id="swap-direction">↓</button>
+                </div>
+
+                <div class="token-input-group">
+                    <label>You receive</label>
+                    <div class="input-row">
+                        <input type="text" id="output-amount" placeholder="0.0" class="amount-input" readonly>
+                        <button class="token-select" id="select-token-out">
+                            <span id="token-out-symbol">Select token</span>
+                        </button>
+                    </div>
+                    <div class="balance-row">
+                        <span id="balance-out">Balance: 0.00</span>
+                    </div>
+                </div>
+
+                <button class="action-btn" id="swap-btn">Select Tokens</button>
+                <div id="status-message" class="status-message"></div>
+
+                <div class="swap-details" id="swap-details" style="display: none;">
+                    <div class="detail-row">
+                        <span>Rate</span>
+                        <span id="exchange-rate">-</span>
+                    </div>
+                    <div class="detail-row">
+                        <span>Price Impact</span>
+                        <span id="price-impact">-</span>
+                    </div>
+                    <div class="detail-row">
+                        <span>Fee (0.3%)</span>
+                        <span id="swap-fee">-</span>
+                    </div>
+                </div>
             </div>
 
-            <div class="token-input-group">
-                <label>You pay</label>
-                <div class="input-row">
-                    <input type="text" id="token-in-amount" placeholder="0.0" class="amount-input">
-                    <button class="token-select" id="select-token-in">
-                        <span>Select token</span>
-                    </button>
-                </div>
-                <div class="balance-row">
-                    <span id="balance-in">Balance: 0.00</span>
-                    <button class="max-btn" id="max-btn-in">MAX</button>
-                </div>
-            </div>
-
-            <div class="swap-arrow">
-                <div style="font-size: 1.5rem; color: #667eea;">↓</div>
-            </div>
-
-            <div class="token-input-group">
-                <label>You receive</label>
-                <div class="input-row">
-                    <input type="text" id="token-out-amount" placeholder="0.0" class="amount-input" readonly>
-                    <button class="token-select" id="select-token-out">
-                        <span>Select token</span>
-                    </button>
-                </div>
-                <div class="balance-row">
-                    <span id="balance-out">Balance: 0.00</span>
-                </div>
-            </div>
-
-            <button class="action-btn" id="swap-btn">Connect Wallet</button>
-            <div id="status-message" class="status-message"></div>
-
-            <div class="info-section" style="margin-top: 20px; padding: 16px; background: #f7f8fa; border-radius: 12px;">
-                <div class="pool-stat">
-                    <span class="pool-stat-label">Rate:</span>
-                    <span class="pool-stat-value" id="exchange-rate">-</span>
-                </div>
-                <div class="pool-stat">
-                    <span class="pool-stat-label">Price Impact:</span>
-                    <span class="pool-stat-value" id="price-impact">-</span>
-                </div>
-                <div class="pool-stat">
-                    <span class="pool-stat-label">Fee (0.3%):</span>
-                    <span class="pool-stat-value" id="swap-fee">-</span>
-                </div>
+            <div class="info-section" style="margin-top: 30px;">
+                <p style="color: #666; font-size: 0.9rem; margin: 0;">
+                    <strong>💡 Trading Tips:</strong> MintonDex uses an automated market maker (AMM) model. 
+                    Liquidity providers earn 0.3% on all trades proportional to their share of the pool.
+                </p>
+                <p style="color: #666; font-size: 0.85rem; margin-top: 10px;">
+                    Want to list your token? Check our <a href="https://github.com/BrunoMarshall/MintonDex/blob/main/TOKEN_SUBMISSION_GUIDE.md" target="_blank" style="color: #667eea;">submission guide</a>
+                </p>
             </div>
         </section>
-    </main>
 
-    <!-- Token Selection Modal -->
-    <div class="token-modal" id="token-modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3>Select a token</h3>
-                <button class="close-modal" id="close-modal">×</button>
+        <!-- Token Selection Modal -->
+        <div id="token-modal" class="token-modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>Select a Token</h2>
+                    <button class="close-modal">&times;</button>
+                </div>
+                <input type="text" id="token-search" placeholder="Search by name, symbol or paste address..." class="token-search">
+                <div class="token-list" id="token-list">
+                    <div style="text-align: center; padding: 40px; color: #999;">
+                        <p>Loading tokens...</p>
+                    </div>
+                </div>
             </div>
-            <input type="text" id="token-search" placeholder="Search name or paste address">
-            <div class="token-list" id="token-list"></div>
         </div>
-    </div>
-
+    </main>
+    
     <footer>
         <div class="social-links">
             <a href="https://discord.com/invite/shardeum" target="_blank"><img src="assets/images/discord.svg" alt="Discord"></a>
