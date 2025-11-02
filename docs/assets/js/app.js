@@ -1484,7 +1484,22 @@ async function loadUserPositions() {
   console.log("Factory Address:", FACTORY_ADDRESS);
   console.log("WSHM Address:", WSHM_ADDRESS);
   
-  const positionsContainer = document.getElementById('positions-container');
+  // Try multiple possible container IDs
+  let positionsContainer = document.getElementById('positions-container');
+  if (!positionsContainer) {
+    positionsContainer = document.getElementById('positions');
+  }
+  if (!positionsContainer) {
+    positionsContainer = document.getElementById('user-positions');
+  }
+  if (!positionsContainer) {
+    positionsContainer = document.querySelector('.positions-container');
+  }
+  if (!positionsContainer) {
+    positionsContainer = document.querySelector('#positions-tab .tab-content');
+  }
+  
+  console.log("Found positionsContainer:", positionsContainer);
   const pairSelect = document.getElementById('pair-select');
   
   console.log("positionsContainer exists:", !!positionsContainer);
