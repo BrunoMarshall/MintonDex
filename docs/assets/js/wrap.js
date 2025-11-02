@@ -1,7 +1,7 @@
 const web3 = new Web3(window.ethereum);
 
-// WSHM Contract Address
-const WSHM_ADDRESS = "0x9988864cb024f0a647c205dbbf96535b0072f40b";
+// MAINNET WSHM Contract Address
+const WSHM_ADDRESS = "0x73653a3fb19e2b8ac5f88f1603eeb7ba164cfbeb";
 
 const WSHM_ABI = [
   {
@@ -60,13 +60,13 @@ const wshmContract = new web3.eth.Contract(WSHM_ABI, WSHM_ADDRESS);
 
 let currentAccount = null;
 
-// Network Configuration
-const SHARDEUM_TESTNET = {
-  chainId: '0x1FB7',
-  chainName: 'Shardeum EVM Testnet',
+// MAINNET Network Configuration
+const SHARDEUM_MAINNET = {
+  chainId: '0x1FB6',  // 8118 in hex
+  chainName: 'Shardeum',
   nativeCurrency: { name: 'Shardeum', symbol: 'SHM', decimals: 18 },
-  rpcUrls: ['https://api-mezame.shardeum.org/'],
-  blockExplorerUrls: ['https://explorer-mezame.shardeum.org/']
+  rpcUrls: ['https://api.shardeum.org/'],
+  blockExplorerUrls: ['https://explorer.shardeum.org/']
 };
 
 // Initialize
@@ -125,7 +125,7 @@ async function connectWallet() {
     currentAccount = accounts[0];
 
     const chainId = await web3.eth.getChainId();
-    if (Number(chainId) !== 8119) {
+    if (Number(chainId) !== 8118) {
       await switchToShardeum();
     }
 
@@ -142,13 +142,13 @@ async function switchToShardeum() {
   try {
     await window.ethereum.request({
       method: 'wallet_switchEthereumChain',
-      params: [{ chainId: SHARDEUM_TESTNET.chainId }]
+      params: [{ chainId: SHARDEUM_MAINNET.chainId }]
     });
   } catch (error) {
     if (error.code === 4902) {
       await window.ethereum.request({
         method: 'wallet_addEthereumChain',
-        params: [SHARDEUM_TESTNET]
+        params: [SHARDEUM_MAINNET]
       });
     }
   }
@@ -285,7 +285,7 @@ async function wrapSHM() {
       gas: 100000
     });
 
-    showStatus(`Successfully wrapped ${amount} SHM! <a href="https://explorer-mezame.shardeum.org/tx/${tx.transactionHash}" target="_blank">View Transaction</a>`, 'success', 'wrap-status');
+    showStatus(`Successfully wrapped ${amount} SHM! <a href="https://explorer.shardeum.org/tx/${tx.transactionHash}" target="_blank">View Transaction</a>`, 'success', 'wrap-status');
     
     document.getElementById('wrap-amount').value = '';
     document.getElementById('wrap-output').value = '';
@@ -321,7 +321,7 @@ async function unwrapSHM() {
       gas: 100000
     });
 
-    showStatus(`Successfully unwrapped ${amount} WSHM! <a href="https://explorer-mezame.shardeum.org/tx/${tx.transactionHash}" target="_blank">View Transaction</a>`, 'success', 'unwrap-status');
+    showStatus(`Successfully unwrapped ${amount} WSHM! <a href="https://explorer.shardeum.org/tx/${tx.transactionHash}" target="_blank">View Transaction</a>`, 'success', 'unwrap-status');
     
     document.getElementById('unwrap-amount').value = '';
     document.getElementById('unwrap-output').value = '';

@@ -63,6 +63,24 @@ const FACTORY_ABI = [
 const ROUTER_ABI = [
   {
     "inputs": [
+      { "internalType": "address", "name": "token", "type": "address" },
+      { "internalType": "uint256", "name": "amountTokenDesired", "type": "uint256" },
+      { "internalType": "uint256", "name": "amountTokenMin", "type": "uint256" },
+      { "internalType": "uint256", "name": "amountETHMin", "type": "uint256" },
+      { "internalType": "address", "name": "to", "type": "address" },
+      { "internalType": "uint256", "name": "deadline", "type": "uint256" }
+    ],
+    "name": "addLiquidityETH",
+    "outputs": [
+      { "internalType": "uint256", "name": "amountToken", "type": "uint256" },
+      { "internalType": "uint256", "name": "amountETH", "type": "uint256" },
+      { "internalType": "uint256", "name": "liquidity", "type": "uint256" }
+    ],
+    "stateMutability": "payable",
+    "type": "function"
+  },
+  {
+    "inputs": [
       { "internalType": "address", "name": "tokenA", "type": "address" },
       { "internalType": "address", "name": "tokenB", "type": "address" },
       { "internalType": "uint256", "name": "amountADesired", "type": "uint256" },
@@ -186,6 +204,57 @@ const ERC20_ABI = [
   },
   {
     "inputs": [{ "internalType": "address", "name": "account", "type": "address" }],
+    "name": "balanceOf",
+    "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      { "internalType": "address", "name": "spender", "type": "address" },
+      { "internalType": "uint256", "name": "amount", "type": "uint256" }
+    ],
+    "name": "approve",
+    "outputs": [{ "internalType": "bool", "name": "", "type": "bool" }],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      { "internalType": "address", "name": "owner", "type": "address" },
+      { "internalType": "address", "name": "spender", "type": "address" }
+    ],
+    "name": "allowance",
+    "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }],
+    "stateMutability": "view",
+    "type": "function"
+  }
+];
+
+
+// WSHM ABI for automatic wrapping
+const WSHM_ABI = [
+  {
+    "constant": false,
+    "inputs": [],
+    "name": "deposit",
+    "outputs": [],
+    "payable": true,
+    "stateMutability": "payable",
+    "type": "function"
+  },
+  {
+    "constant": false,
+    "inputs": [{ "internalType": "uint256", "name": "wad", "type": "uint256" }],
+    "name": "withdraw",
+    "outputs": [],
+    "payable": false,
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "constant": true,
+    "inputs": [{ "internalType": "address", "name": "", "type": "address" }],
     "name": "balanceOf",
     "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }],
     "stateMutability": "view",
@@ -848,7 +917,7 @@ async function executeSwap() {
         gas: 300000
       });
       
-      showStatus(`Swap successful! 🎉 <a href="https://explorer-mezame.shardeum.org/tx/${tx.transactionHash}" target="_blank">View Transaction</a>`, 'success', 'status-message');
+      showStatus(`Swap successful! ðŸŽ‰ <a href="https://explorer.shardeum.org/tx/${tx.transactionHash}" target="_blank">View Transaction</a>`, 'success', 'status-message');
     }
     else if (selectedTokenOut.isNative) {
       const path = [selectedTokenIn.address, WSHM_ADDRESS];
@@ -883,7 +952,7 @@ async function executeSwap() {
         gas: 300000
       });
       
-      showStatus(`Swap successful! 🎉 <a href="https://explorer-mezame.shardeum.org/tx/${tx.transactionHash}" target="_blank">View Transaction</a>`, 'success', 'status-message');
+      showStatus(`Swap successful! ðŸŽ‰ <a href="https://explorer.shardeum.org/tx/${tx.transactionHash}" target="_blank">View Transaction</a>`, 'success', 'status-message');
     }
     else {
       const path = [selectedTokenIn.address, selectedTokenOut.address];
@@ -918,7 +987,7 @@ async function executeSwap() {
         gas: 300000
       });
       
-      showStatus(`Swap successful! 🎉 <a href="https://explorer-mezame.shardeum.org/tx/${tx.transactionHash}" target="_blank">View Transaction</a>`, 'success', 'status-message');
+      showStatus(`Swap successful! ðŸŽ‰ <a href="https://explorer.shardeum.org/tx/${tx.transactionHash}" target="_blank">View Transaction</a>`, 'success', 'status-message');
     }
     
     document.getElementById('input-amount').value = '';
@@ -1011,85 +1080,162 @@ async function addLiquidity() {
   }
   
   try {
-    showStatus('Checking balances...', 'info', 'add-status');
-    
     const amountAWei = web3.utils.toWei(amountA, 'ether');
     const amountBWei = web3.utils.toWei(amountB, 'ether');
     
-    const tokenAContract = new web3.eth.Contract(ERC20_ABI, window.selectedAddTokenA.address);
-    const tokenBContract = new web3.eth.Contract(ERC20_ABI, window.selectedAddTokenB.address);
+    // Check if either token is native SHM
+    const isTokenANative = window.selectedAddTokenA.address === 'NATIVE_SHM';
+    const isTokenBNative = window.selectedAddTokenB.address === 'NATIVE_SHM';
     
-    const balanceA = await tokenAContract.methods.balanceOf(currentAccount).call();
-    const balanceB = await tokenBContract.methods.balanceOf(currentAccount).call();
-    
-    if (BigInt(balanceA) < BigInt(amountAWei)) {
-      showStatus(`Insufficient ${window.selectedAddTokenA.symbol} balance`, 'error', 'add-status');
-      return;
-    }
-    
-    if (BigInt(balanceB) < BigInt(amountBWei)) {
-      showStatus(`Insufficient ${window.selectedAddTokenB.symbol} balance`, 'error', 'add-status');
-      return;
-    }
-    
-    const MAX_UINT256 = '115792089237316195423570985008687907853269984665640564039457584007913129639935';
-    
-    showStatus(`Checking ${window.selectedAddTokenA.symbol} approval...`, 'info', 'add-status');
-    const allowanceA = await tokenAContract.methods.allowance(currentAccount, ROUTER_ADDRESS).call();
-    
-    if (BigInt(allowanceA) < BigInt(amountAWei)) {
-      showStatus(`Approving ${window.selectedAddTokenA.symbol}...`, 'info', 'add-status');
-      await tokenAContract.methods.approve(ROUTER_ADDRESS, MAX_UINT256).send({
+    // Handle liquidity with native SHM (automatic wrapping by router)
+    if (isTokenANative || isTokenBNative) {
+      const tokenAddress = isTokenANative ? window.selectedAddTokenB.address : window.selectedAddTokenA.address;
+      const tokenAmount = isTokenANative ? amountBWei : amountAWei;
+      const ethAmount = isTokenANative ? amountAWei : amountBWei;
+      const tokenSymbol = isTokenANative ? window.selectedAddTokenB.symbol : window.selectedAddTokenA.symbol;
+      
+      showStatus('Checking balances...', 'info', 'add-status');
+      
+      // Check SHM balance
+      const shmBalance = await web3.eth.getBalance(currentAccount);
+      if (BigInt(shmBalance) < BigInt(ethAmount)) {
+        showStatus('Insufficient SHM balance', 'error', 'add-status');
+        return;
+      }
+      
+      // Check token balance
+      const tokenContract = new web3.eth.Contract(ERC20_ABI, tokenAddress);
+      const tokenBalance = await tokenContract.methods.balanceOf(currentAccount).call();
+      
+      if (BigInt(tokenBalance) < BigInt(tokenAmount)) {
+        showStatus(`Insufficient ${tokenSymbol} balance`, 'error', 'add-status');
+        return;
+      }
+      
+      // Approve token if needed
+      showStatus(`Checking ${tokenSymbol} approval...`, 'info', 'add-status');
+      const MAX_UINT256 = '115792089237316195423570985008687907853269984665640564039457584007913129639935';
+      const allowance = await tokenContract.methods.allowance(currentAccount, ROUTER_ADDRESS).call();
+      
+      if (BigInt(allowance) < BigInt(tokenAmount)) {
+        showStatus(`Approving ${tokenSymbol}...`, 'info', 'add-status');
+        await tokenContract.methods.approve(ROUTER_ADDRESS, MAX_UINT256).send({
+          from: currentAccount,
+          maxFeePerGas: web3.utils.toWei('3000', 'gwei'),
+          maxPriorityFeePerGas: web3.utils.toWei('3000', 'gwei'),
+          gas: 100000
+        });
+        await new Promise(resolve => setTimeout(resolve, 3000));
+      }
+      
+      const tokenAmountMin = (BigInt(tokenAmount) * BigInt(85)) / BigInt(100);
+      const ethAmountMin = (BigInt(ethAmount) * BigInt(85)) / BigInt(100);
+      const deadline = Math.floor(Date.now() / 1000) + 60 * 30;
+      
+      showStatus('Adding liquidity with SHM (auto-wrapping)...', 'info', 'add-status');
+      
+      // Use addLiquidityETH - Router automatically wraps SHM to WSHM
+      const tx = await routerContract.methods.addLiquidityETH(
+        tokenAddress,
+        tokenAmount,
+        tokenAmountMin.toString(),
+        ethAmountMin.toString(),
+        currentAccount,
+        deadline
+      ).send({
+        from: currentAccount,
+        value: ethAmount,
+        maxFeePerGas: web3.utils.toWei('3000', 'gwei'),
+        maxPriorityFeePerGas: web3.utils.toWei('3000', 'gwei'),
+        gas: 3000000
+      });
+      
+      showStatus(`Liquidity added successfully! 🎉 <a href="https://explorer.shardeum.org/tx/${tx.transactionHash}" target="_blank">View Transaction</a>`, 'success', 'add-status');
+      
+      document.getElementById('add-amount-a').value = '';
+      document.getElementById('add-amount-b').value = '';
+      await updateBalances();
+      await loadUserPositions();
+      
+    } else {
+      // Standard token-token liquidity (no native SHM)
+      showStatus('Checking balances...', 'info', 'add-status');
+      
+      const tokenAContract = new web3.eth.Contract(ERC20_ABI, window.selectedAddTokenA.address);
+      const tokenBContract = new web3.eth.Contract(ERC20_ABI, window.selectedAddTokenB.address);
+      
+      const balanceA = await tokenAContract.methods.balanceOf(currentAccount).call();
+      const balanceB = await tokenBContract.methods.balanceOf(currentAccount).call();
+      
+      if (BigInt(balanceA) < BigInt(amountAWei)) {
+        showStatus(`Insufficient ${window.selectedAddTokenA.symbol} balance`, 'error', 'add-status');
+        return;
+      }
+      
+      if (BigInt(balanceB) < BigInt(amountBWei)) {
+        showStatus(`Insufficient ${window.selectedAddTokenB.symbol} balance`, 'error', 'add-status');
+        return;
+      }
+      
+      const MAX_UINT256 = '115792089237316195423570985008687907853269984665640564039457584007913129639935';
+      
+      showStatus(`Checking ${window.selectedAddTokenA.symbol} approval...`, 'info', 'add-status');
+      const allowanceA = await tokenAContract.methods.allowance(currentAccount, ROUTER_ADDRESS).call();
+      
+      if (BigInt(allowanceA) < BigInt(amountAWei)) {
+        showStatus(`Approving ${window.selectedAddTokenA.symbol}...`, 'info', 'add-status');
+        await tokenAContract.methods.approve(ROUTER_ADDRESS, MAX_UINT256).send({
+          from: currentAccount,
+          maxFeePerGas: web3.utils.toWei('3000', 'gwei'),
+          maxPriorityFeePerGas: web3.utils.toWei('3000', 'gwei'),
+          gas: 100000
+        });
+        await new Promise(resolve => setTimeout(resolve, 3000));
+      }
+      
+      showStatus(`Checking ${window.selectedAddTokenB.symbol} approval...`, 'info', 'add-status');
+      const allowanceB = await tokenBContract.methods.allowance(currentAccount, ROUTER_ADDRESS).call();
+      
+      if (BigInt(allowanceB) < BigInt(amountBWei)) {
+        showStatus(`Approving ${window.selectedAddTokenB.symbol}...`, 'info', 'add-status');
+        await tokenBContract.methods.approve(ROUTER_ADDRESS, MAX_UINT256).send({
+          from: currentAccount,
+          maxFeePerGas: web3.utils.toWei('3000', 'gwei'),
+          maxPriorityFeePerGas: web3.utils.toWei('3000', 'gwei'),
+          gas: 100000
+        });
+        await new Promise(resolve => setTimeout(resolve, 3000));
+      }
+      
+      const amountAMin = (BigInt(amountAWei) * BigInt(85)) / BigInt(100);
+      const amountBMin = (BigInt(amountBWei) * BigInt(85)) / BigInt(100);
+      const deadline = Math.floor(Date.now() / 1000) + 60 * 30;
+      
+      showStatus('Adding liquidity...', 'info', 'add-status');
+      
+      const tx = await routerContract.methods.addLiquidity(
+        window.selectedAddTokenA.address,
+        window.selectedAddTokenB.address,
+        amountAWei,
+        amountBWei,
+        amountAMin.toString(),
+        amountBMin.toString(),
+        currentAccount,
+        deadline
+      ).send({
         from: currentAccount,
         maxFeePerGas: web3.utils.toWei('3000', 'gwei'),
         maxPriorityFeePerGas: web3.utils.toWei('3000', 'gwei'),
-        gas: 100000
+        gas: 3000000
       });
-      await new Promise(resolve => setTimeout(resolve, 3000));
+      
+      showStatus(`Liquidity added successfully! 🎉 <a href="https://explorer.shardeum.org/tx/${tx.transactionHash}" target="_blank">View Transaction</a>`, 'success', 'add-status');
+      
+      document.getElementById('add-amount-a').value = '';
+      document.getElementById('add-amount-b').value = '';
+      await updateBalances();
+      await loadUserPositions();
     }
-    
-    showStatus(`Checking ${window.selectedAddTokenB.symbol} approval...`, 'info', 'add-status');
-    const allowanceB = await tokenBContract.methods.allowance(currentAccount, ROUTER_ADDRESS).call();
-    
-    if (BigInt(allowanceB) < BigInt(amountBWei)) {
-      showStatus(`Approving ${window.selectedAddTokenB.symbol}...`, 'info', 'add-status');
-      await tokenBContract.methods.approve(ROUTER_ADDRESS, MAX_UINT256).send({
-        from: currentAccount,
-        maxFeePerGas: web3.utils.toWei('3000', 'gwei'),
-        maxPriorityFeePerGas: web3.utils.toWei('3000', 'gwei'),
-        gas: 100000
-      });
-      await new Promise(resolve => setTimeout(resolve, 3000));
-    }
-    
-    const amountAMin = (BigInt(amountAWei) * BigInt(85)) / BigInt(100);
-    const amountBMin = (BigInt(amountBWei) * BigInt(85)) / BigInt(100);
-    const deadline = Math.floor(Date.now() / 1000) + 60 * 30;
-    
-    showStatus('Adding liquidity...', 'info', 'add-status');
-    
-    const tx = await routerContract.methods.addLiquidity(
-      window.selectedAddTokenA.address,
-      window.selectedAddTokenB.address,
-      amountAWei,
-      amountBWei,
-      amountAMin.toString(),
-      amountBMin.toString(),
-      currentAccount,
-      deadline
-    ).send({
-      from: currentAccount,
-      maxFeePerGas: web3.utils.toWei('3000', 'gwei'),
-      maxPriorityFeePerGas: web3.utils.toWei('3000', 'gwei'),
-      gas: 3000000
-    });
-    
-    showStatus(`Liquidity added successfully! 🎉 <a href="https://explorer-mezame.shardeum.org/tx/${tx.transactionHash}" target="_blank">View Transaction</a>`, 'success', 'add-status');
-    
-    document.getElementById('add-amount-a').value = '';
-    document.getElementById('add-amount-b').value = '';
-    await updateBalances();
-    await loadUserPositions();
     
   } catch (error) {
     console.error('Add liquidity error:', error);
@@ -1106,6 +1252,7 @@ async function addLiquidity() {
     showStatus(errorMsg, 'error', 'add-status');
   }
 }
+
 
 async function removeLiquidity() {
   if (!currentAccount) {
@@ -1170,7 +1317,7 @@ async function removeLiquidity() {
       gas: 500000
     });
     
-    showStatus(`Liquidity removed successfully! 🎉 <a href="https://explorer-mezame.shardeum.org/tx/${tx.transactionHash}" target="_blank">View Transaction</a>`, 'success', 'remove-status');
+    showStatus(`Liquidity removed successfully! ðŸŽ‰ <a href="https://explorer.shardeum.org/tx/${tx.transactionHash}" target="_blank">View Transaction</a>`, 'success', 'remove-status');
     
     removeSlider.value = 0;
     updateRemoveAmount();
@@ -1276,7 +1423,7 @@ async function loadUserPositions() {
       if (positions.length === 0) {
         positionsContainer.innerHTML = `
           <div class="no-positions">
-            <p style="font-size: 1.2rem; margin-bottom: 10px;">📊 No positions yet</p>
+            <p style="font-size: 1.2rem; margin-bottom: 10px;">ðŸ“Š No positions yet</p>
             <p>Add liquidity to create your first position</p>
             <button class="action-btn" style="margin-top: 20px; max-width: 200px;" onclick="document.querySelector('[data-tab=add]').click()">
               Add Liquidity
