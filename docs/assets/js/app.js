@@ -1136,73 +1136,157 @@ async function addLiquidity() {
       const ethAmount = isTokenANative ? amountAWei : amountBWei;
       const tokenSymbol = isTokenANative ? window.selectedAddTokenB.symbol : window.selectedAddTokenA.symbol;
       
+      console.log("=== ADD LIQUIDITY DEBUG ===");
+      console.log("SHM Amount:", web3.utils.fromWei(ethAmount, 'ether'));
+      console.log("Token Amount:", web3.utils.fromWei(tokenAmount, 'ether'));
+      console.log("Token Address:", tokenAddress);
+      console.log("Token Symbol:", tokenSymbol);
+      
       showStatus('Checking balances...', 'info', 'add-status');
       
       // Check SHM balance
       const shmBalance = await web3.eth.getBalance(currentAccount);
-      const requiredSHM = BigInt(ethAmount) + BigInt(web3.utils.toWei('0.01', 'ether')); // Add gas buffer
+      const requiredSHM = BigInt(ethAmount) + BigInt(web3.utils.toWei('0.01', 'ether'));
+      
+      console.log("SHM Balance:", web3.utils.fromWei(shmBalance, 'ether'));
+      console.log("SHM Required:", web3.utils.fromWei(requiredSHM.toString(), 'ether'));
       
       if (BigInt(shmBalance) < requiredSHM) {
         showStatus('Insufficient SHM balance (need extra for gas)', 'error', 'add-status');
         return;
       }
       
-      // Check token balance
+      // Check token balance and decimals
       const tokenContract = new web3.eth.Contract(ERC20_ABI, tokenAddress);
-      const tokenBalance = await tokenContract.methods.balanceOf(currentAccount).call();
       
-      if (BigInt(tokenBalance) < BigInt(tokenAmount)) {
-        showStatus(`Insufficient ${tokenSymbol} balance`, 'error', 'add-status');
+      try {
+        const [tokenBalance, tokenDecimals, tokenName] = await Promise.all([
+          tokenContract.methods.balanceOf(currentAccount).call(),
+          tokenContract.methods.decimals().call(),
+          tokenContract.methods.name().call()
+        ]);
+        
+        console.log("Token Name:", tokenName);
+        console.log("Token Decimals:", tokenDecimals);
+        console.log("Token Balance:", web3.utils.fromWei(tokenBalance, 'ether'));
+        console.log("Token Required:", web3.utils.fromWei(tokenAmount, 'ether'));
+        
+        if (tokenDecimals !== 18) {
+          showStatus(`WARNING: Token has ${tokenDecimals} decimals (expected 18). Conversion may be incorrect.`, 'error', 'add-status');
+          console.warn("Token decimals mismatch!");
+        }
+        
+        if (BigInt(tokenBalance) < BigInt(tokenAmount)) {
+          showStatus(`Insufficient ${tokenSymbol} balance. Have: ${web3.utils.fromWei(tokenBalance, 'ether')}, Need: ${web3.utils.fromWei(tokenAmount, 'ether')}`, 'error', 'add-status');
+          return;
+        }
+      } catch (error) {
+        console.error("Error checking token:", error);
+        showStatus('Error checking token - invalid token contract?', 'error', 'add-status');
         return;
       }
       
       // Approve token if needed
       showStatus(`Checking ${tokenSymbol} approval...`, 'info', 'add-status');
       const MAX_UINT256 = '115792089237316195423570985008687907853269984665640564039457584007913129639935';
-      const allowance = await tokenContract.methods.allowance(currentAccount, ROUTER_ADDRESS).call();
       
-      if (BigInt(allowance) < BigInt(tokenAmount)) {
-        showStatus(`Approving ${tokenSymbol}...`, 'info', 'add-status');
-        await tokenContract.methods.approve(ROUTER_ADDRESS, MAX_UINT256).send({
-          from: currentAccount,
-          maxFeePerGas: web3.utils.toWei('3000', 'gwei'),
-          maxPriorityFeePerGas: web3.utils.toWei('3000', 'gwei'),
-          gas: 100000
-        });
-        await new Promise(resolve => setTimeout(resolve, 3000));
+      try {
+        const allowance = await tokenContract.methods.allowance(currentAccount, ROUTER_ADDRESS).call();
+        console.log("Current Allowance:", web3.utils.fromWei(allowance, 'ether'));
+        
+        if (BigInt(allowance) < BigInt(tokenAmount)) {
+          showStatus(`Approving ${tokenSymbol}... Please confirm in MetaMask`, 'info', 'add-status');
+          
+          const approveTx = await tokenContract.methods.approve(ROUTER_ADDRESS, MAX_UINT256).send({
+            from: currentAccount,
+            maxFeePerGas: web3.utils.toWei('3000', 'gwei'),
+            maxPriorityFeePerGas: web3.utils.toWei('3000', 'gwei'),
+            gas: 100000
+          });
+          
+          console.log("Approval TX:", approveTx.transactionHash);
+          showStatus('Token approved! Waiting 3 seconds...', 'info', 'add-status');
+          await new Promise(resolve => setTimeout(resolve, 3000));
+          
+          // Verify approval worked
+          const newAllowance = await tokenContract.methods.allowance(currentAccount, ROUTER_ADDRESS).call();
+          console.log("New Allowance:", web3.utils.fromWei(newAllowance, 'ether'));
+          
+          if (BigInt(newAllowance) < BigInt(tokenAmount)) {
+            showStatus('Approval failed - please try again', 'error', 'add-status');
+            return;
+          }
+        } else {
+          console.log("Token already approved ✓");
+        }
+      } catch (error) {
+        console.error("Approval error:", error);
+        showStatus('Failed to approve token: ' + error.message, 'error', 'add-status');
+        return;
       }
       
       const tokenAmountMin = (BigInt(tokenAmount) * BigInt(95)) / BigInt(100);
       const ethAmountMin = (BigInt(ethAmount) * BigInt(95)) / BigInt(100);
       const deadline = Math.floor(Date.now() / 1000) + 60 * 30;
       
-      showStatus('Adding liquidity with SHM (auto-wrapping)...', 'info', 'add-status');
+      console.log("=== TRANSACTION PARAMETERS ===");
+      console.log("Token:", tokenAddress);
+      console.log("Token Amount:", tokenAmount);
+      console.log("Token Amount Min:", tokenAmountMin.toString());
+      console.log("ETH Amount:", ethAmount);
+      console.log("ETH Amount Min:", ethAmountMin.toString());
+      console.log("Deadline:", deadline);
+      console.log("Router:", ROUTER_ADDRESS);
+      
+      showStatus('Adding liquidity with SHM (auto-wrapping)... Please confirm in MetaMask', 'info', 'add-status');
       
       // Use addLiquidityETH - Router automatically wraps SHM to WSHM
-      const tx = await routerContract.methods.addLiquidityETH(
-        tokenAddress,
-        tokenAmount,
-        tokenAmountMin.toString(),
-        ethAmountMin.toString(),
-        currentAccount,
-        deadline
-      ).send({
-        from: currentAccount,
-        value: ethAmount,
-        maxFeePerGas: web3.utils.toWei('3000', 'gwei'),
-        maxPriorityFeePerGas: web3.utils.toWei('3000', 'gwei'),
-        gas: 3000000
-      });
-      
-      showStatus(`Liquidity added successfully! 🎉 <a href="https://explorer.shardeum.org/tx/${tx.transactionHash}" target="_blank">View Transaction</a>`, 'success', 'add-status');
-      
-      document.getElementById('add-amount-a').value = '';
-      document.getElementById('add-amount-b').value = '';
-      await updateBalances();
-      await loadUserPositions();
+      try {
+        const tx = await routerContract.methods.addLiquidityETH(
+          tokenAddress,
+          tokenAmount,
+          tokenAmountMin.toString(),
+          ethAmountMin.toString(),
+          currentAccount,
+          deadline
+        ).send({
+          from: currentAccount,
+          value: ethAmount,
+          maxFeePerGas: web3.utils.toWei('3000', 'gwei'),
+          maxPriorityFeePerGas: web3.utils.toWei('3000', 'gwei'),
+          gas: 3000000
+        });
+        
+        console.log("Success! TX:", tx.transactionHash);
+        showStatus(`Liquidity added successfully! 🎉 <a href="https://explorer.shardeum.org/tx/${tx.transactionHash}" target="_blank">View Transaction</a>`, 'success', 'add-status');
+        
+        document.getElementById('add-amount-a').value = '';
+        document.getElementById('add-amount-b').value = '';
+        await updateBalances();
+        await loadUserPositions();
+      } catch (txError) {
+        console.error("Transaction error:", txError);
+        
+        // Try to extract the actual error
+        let errorMsg = 'Transaction failed';
+        if (txError.message) {
+          if (txError.message.includes('insufficient funds')) {
+            errorMsg = 'Insufficient SHM for gas fees';
+          } else if (txError.message.includes('user rejected') || txError.message.includes('User denied')) {
+            errorMsg = 'Transaction cancelled';
+          } else if (txError.message.includes('INSUFFICIENT_')) {
+            errorMsg = 'Insufficient liquidity amounts. Try adjusting your ratio.';
+          } else {
+            errorMsg = 'Transaction failed: ' + txError.message.substring(0, 100);
+          }
+        }
+        
+        showStatus(errorMsg, 'error', 'add-status');
+        throw txError; // Re-throw for outer catch
+      }
       
     } else {
-      // Standard token-token liquidity (no native SHM)
+      // Standard token-token liquidity (existing code unchanged)
       showStatus('Checking balances...', 'info', 'add-status');
       
       const tokenAContract = new web3.eth.Contract(ERC20_ABI, window.selectedAddTokenA.address);
@@ -1283,14 +1367,18 @@ async function addLiquidity() {
     
   } catch (error) {
     console.error('Add liquidity error:', error);
+    console.error('Error stack:', error.stack);
+    
     let errorMsg = 'Failed to add liquidity';
     
     if (error.message.includes('insufficient funds')) {
       errorMsg = 'Insufficient SHM for gas fees';
-    } else if (error.message.includes('user rejected')) {
+    } else if (error.message.includes('user rejected') || error.message.includes('User denied')) {
       errorMsg = 'Transaction cancelled by user';
     } else if (error.message.includes('INSUFFICIENT_')) {
       errorMsg = 'Insufficient liquidity or invalid amounts. Try adjusting your amounts.';
+    } else if (error.message.includes('EXPIRED')) {
+      errorMsg = 'Transaction expired. Please try again.';
     } else {
       errorMsg = `Error: ${error.message}`;
     }
