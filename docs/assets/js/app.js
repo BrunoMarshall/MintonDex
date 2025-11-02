@@ -1384,7 +1384,7 @@ async function removeLiquidity() {
     return;
   }
   
-  const pairSelect = document.getElementById('pair-select');
+  const pairSelect = document.getElementById('remove-pair-select');
   const removeSlider = document.getElementById('remove-slider');
   
   if (!pairSelect || !pairSelect.value) {
@@ -1484,25 +1484,9 @@ async function loadUserPositions() {
   console.log("Factory Address:", FACTORY_ADDRESS);
   console.log("WSHM Address:", WSHM_ADDRESS);
   
-  // Try multiple possible container IDs
-  let positionsContainer = document.getElementById('positions-container');
-  if (!positionsContainer) {
-    positionsContainer = document.getElementById('positions');
-  }
-  if (!positionsContainer) {
-    positionsContainer = document.getElementById('user-positions');
-  }
-  if (!positionsContainer) {
-    positionsContainer = document.querySelector('.positions-container');
-  }
-  if (!positionsContainer) {
-    positionsContainer = document.querySelector('#positions-tab .tab-content');
-  }
+  const positionsContainer = document.getElementById('positions-container');
+  const pairSelect = document.getElementById('remove-pair-select');
   
-  console.log("Found positionsContainer:", positionsContainer);
-  const pairSelect = document.getElementById('pair-select');
-  
-  console.log("positionsContainer exists:", !!positionsContainer);
   if (positionsContainer) {
     positionsContainer.innerHTML = '<div class="loading" style="text-align: center; padding: 40px;">Loading positions...</div>';
   }
@@ -1608,10 +1592,7 @@ async function loadUserPositions() {
           </div>
         `;
       } else {
-        console.log("Rendering positions HTML...");
-        const positionsHTML = positions.map((pos, index) => {
-          console.log(`Rendering position ${index}:`, pos);
-          return `
+        positionsContainer.innerHTML = positions.map(pos => `
           <div class="position-card">
             <div class="position-header">
               <h3>${pos.token0.symbol}/${pos.token1.symbol}</h3>
@@ -1639,15 +1620,9 @@ async function loadUserPositions() {
                 Add to MetaMask
               </button>
             </div>
-          </div>`;
-        }).join('');
-        
-        console.log("Setting innerHTML...");
-        positionsContainer.innerHTML = positionsHTML;
-        console.log("HTML set successfully!");
+          </div>
+        `).join('');
       }
-    } else {
-      console.error("ERROR: positionsContainer element not found!");
     }
     
   } catch (error) {
@@ -1673,7 +1648,7 @@ function updateRemoveDisplay(position) {
 function removeLiquidityFromCard(pairAddress) {
   switchTab('remove');
   
-  const pairSelect = document.getElementById('pair-select');
+  const pairSelect = document.getElementById('remove-pair-select');
   if (pairSelect) {
     pairSelect.value = pairAddress;
     pairSelect.dispatchEvent(new Event('change'));
