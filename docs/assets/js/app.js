@@ -1467,9 +1467,23 @@ function updateRemoveAmount() {
     const amount1 = (parseFloat(window.currentRemovePosition.amount1) * percent) / 100;
     const lpTokens = (parseFloat(window.currentRemovePosition.lpBalance) * percent) / 100;
     
-    document.getElementById('receive-amount-a').textContent = amount0.toFixed(6);
-    document.getElementById('receive-amount-b').textContent = amount1.toFixed(6);
-    document.getElementById('lp-to-burn').textContent = lpTokens.toFixed(6);
+    // Update amounts if elements exist
+    const receiveA = document.getElementById('receive-amount-a');
+    const receiveB = document.getElementById('receive-amount-b');
+    const lpBurn = document.getElementById('lp-to-burn');
+    const removeAmounts = document.getElementById('remove-amounts');
+    
+    if (receiveA) receiveA.textContent = amount0.toFixed(6);
+    if (receiveB) receiveB.textContent = amount1.toFixed(6);
+    if (lpBurn) lpBurn.textContent = lpTokens.toFixed(6);
+    
+    // If individual elements don't exist, try the combined display
+    if (removeAmounts && window.currentRemovePosition) {
+      removeAmounts.innerHTML = `
+        ${window.currentRemovePosition.token0.symbol}: ${amount0.toFixed(6)}<br>
+        ${window.currentRemovePosition.token1.symbol}: ${amount1.toFixed(6)}
+      `;
+    }
   }
 }
 
@@ -1740,9 +1754,16 @@ function showStatus(message, type, elementId = 'status-message') {
 
 async function addLPToMetaMask(pairAddress, symbol0, symbol1) {
   try {
-    const pairContract = new web3.eth.Contract(PAIR_ABI, pairAddress);
-    const symbol = await pairContract.methods.symbol().call();
-    const decimals = await pairContract.methods.decimals().call();
+    // LP tokens are ERC20, so use ERC20_ABI
+    const pairContract = new web3.eth.Contract(ERC20_ABI, pairAddress);
+    
+    // Get symbol and decimals
+    const [symbol, decimals] = await Promise.all([
+      pairContract.methods.symbol().call().catch(() => `${symbol0}-${symbol1} LP`),
+      pairContract.methods.decimals().call().catch(() => 18)
+    ]);
+    
+    console.log(`Adding LP token to MetaMask: ${symbol} (${decimals} decimals)`);
     
     const wasAdded = await window.ethereum.request({
       method: 'wallet_watchAsset',
@@ -1759,6 +1780,9 @@ async function addLPToMetaMask(pairAddress, symbol0, symbol1) {
     
     if (wasAdded) {
       showStatus(`${symbol0}/${symbol1} LP token added to MetaMask!`, 'success', 'add-status');
+      console.log("✅ LP token added to MetaMask successfully!");
+    } else {
+      console.log("User cancelled adding LP token");
     }
   } catch (error) {
     console.error('Error adding LP to MetaMask:', error);
