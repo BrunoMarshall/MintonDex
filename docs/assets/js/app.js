@@ -1014,6 +1014,15 @@ async function calculateLiquidityB() {
     const tokenAAddress = window.selectedAddTokenA.address === 'NATIVE_SHM' ? WSHM_ADDRESS : window.selectedAddTokenA.address;
     const tokenBAddress = window.selectedAddTokenB.address === 'NATIVE_SHM' ? WSHM_ADDRESS : window.selectedAddTokenB.address;
     
+    // Check if pair exists first
+    const pairAddress = await factoryContract.methods.getPair(tokenAAddress, tokenBAddress).call();
+    
+    // If no pair exists (address is 0x0), skip calculation - this will be a new pool
+    if (!pairAddress || pairAddress === '0x0000000000000000000000000000000000000000') {
+      console.log('No existing pool - user can set initial ratio');
+      return;
+    }
+    
     const reserves = await routerContract.methods.getReserves(
       tokenAAddress,
       tokenBAddress
@@ -1030,7 +1039,8 @@ async function calculateLiquidityB() {
       amountB.value = web3.utils.fromWei(optimalB.toString(), 'ether');
     }
   } catch (error) {
-    console.error('Error calculating liquidity B:', error);
+    console.log('Calculate liquidity B: Pool may not exist yet');
+    // Silently fail - this is normal for new pools
   }
 }
 
@@ -1048,6 +1058,15 @@ async function calculateLiquidityA() {
     const tokenAAddress = window.selectedAddTokenA.address === 'NATIVE_SHM' ? WSHM_ADDRESS : window.selectedAddTokenA.address;
     const tokenBAddress = window.selectedAddTokenB.address === 'NATIVE_SHM' ? WSHM_ADDRESS : window.selectedAddTokenB.address;
     
+    // Check if pair exists first
+    const pairAddress = await factoryContract.methods.getPair(tokenAAddress, tokenBAddress).call();
+    
+    // If no pair exists (address is 0x0), skip calculation - this will be a new pool
+    if (!pairAddress || pairAddress === '0x0000000000000000000000000000000000000000') {
+      console.log('No existing pool - user can set initial ratio');
+      return;
+    }
+    
     const reserves = await routerContract.methods.getReserves(
       tokenAAddress,
       tokenBAddress
@@ -1064,7 +1083,8 @@ async function calculateLiquidityA() {
       amountA.value = web3.utils.fromWei(optimalA.toString(), 'ether');
     }
   } catch (error) {
-    console.error('Error calculating liquidity A:', error);
+    console.log('Calculate liquidity A: Pool may not exist yet');
+    // Silently fail - this is normal for new pools
   }
 }
 
