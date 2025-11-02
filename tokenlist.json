@@ -7,39 +7,39 @@
   },
   "tokens": [
     {
-      "address": "0x9988864cb024f0a647c205dbbf96535b0072f40b",
+      "address": "0x73653a3fb19e2b8ac5f88f1603eeb7ba164cfbeb",
       "name": "Wrapped SHM",
       "symbol": "WSHM",
       "decimals": 18,
       "logoURI": "https://raw.githubusercontent.com/BrunoMarshall/MintonDex/main/logos/wshm.png"
     },
     {
-      "address": "0xcc3463943Aa68DeD67bA7C128a040583cB59B5e9",
+      "address": "0xe2234da68012aDFD0F788FcBE2563BF0C49B31f1",
       "name": "Marshall",
       "symbol": "MRSH",
       "decimals": 18,
-      "logoURI": "https://raw.githubusercontent.com/BrunoMarshall/MintonDex/main/logos/0xcc3463943Aa68DeD67bA7C128a040583cB59B5e9.png"
+      "logoURI": "https://raw.githubusercontent.com/BrunoMarshall/MintonDex/main/logos/0xe2234da68012aDFD0F788FcBE2563BF0C49B31f1.png"
     },
     {
-      "address": "0xCd11325Fa7d01Ae694b3292DCbEB1B442D5854D6",
+      "address": "0xd721E0C5b48B25878bA9DC9C12F0239063480be1",
       "name": "SPLIT",
       "symbol": "SPLIT",
       "decimals": 18,
-      "logoURI": "https://raw.githubusercontent.com/BrunoMarshall/MintonDex/main/logos/0xCd11325Fa7d01Ae694b3292DCbEB1B442D5854D6.png"
+      "logoURI": "https://raw.githubusercontent.com/BrunoMarshall/MintonDex/main/logos/0xd721E0C5b48B25878bA9DC9C12F0239063480be1.png"
     },
     {
-          "address": "0x2c0674CBaa07106E53Fe07c9bB9B0af6F8139d66",
-          "name": "Pay2Friends",
-          "symbol": "P2F",
-          "decimals": 18,
-          "logoURI": "https://raw.githubusercontent.com/BrunoMarshall/MintonDex/main/logos/0x2c0674CBaa07106E53Fe07c9bB9B0af6F8139d66.png"
+      "address": "0xb0691B025e285f0cD2e6D4E86935f4FD72224c86",
+      "name": "Pay2Friends",
+      "symbol": "P2F",
+      "decimals": 18,
+      "logoURI": "https://raw.githubusercontent.com/BrunoMarshall/MintonDex/main/logos/0xb0691B025e285f0cD2e6D4E86935f4FD72224c86.png"
     },
    {
-          "address": "0xF9C6573e550ca7955FB19a2115932500978bAf30",
-          "name": "GUNDA",
-          "symbol": "GUNDA",
-          "decimals": 18,
-          "logoURI": "https://raw.githubusercontent.com/BrunoMarshall/MintonDex/main/logos/0xF9C6573e550ca7955FB19a2115932500978bAf30.png"
+      "address": "0x171E6e0EdE6068d7c01bB8ec55f0dC6C6Ba97F36",
+      "name": "MINTON",
+      "symbol": "MINT",
+      "decimals": 18,
+      "logoURI": "https://raw.githubusercontent.com/BrunoMarshall/MintonDex/main/logos/0x171E6e0EdE6068d7c01bB8ec55f0dC6C6Ba97F36.png"
     }
   ]
 }
