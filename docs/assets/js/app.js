@@ -1487,6 +1487,7 @@ async function loadUserPositions() {
   const positionsContainer = document.getElementById('positions-container');
   const pairSelect = document.getElementById('pair-select');
   
+  console.log("positionsContainer exists:", !!positionsContainer);
   if (positionsContainer) {
     positionsContainer.innerHTML = '<div class="loading" style="text-align: center; padding: 40px;">Loading positions...</div>';
   }
@@ -1592,7 +1593,10 @@ async function loadUserPositions() {
           </div>
         `;
       } else {
-        positionsContainer.innerHTML = positions.map(pos => `
+        console.log("Rendering positions HTML...");
+        const positionsHTML = positions.map((pos, index) => {
+          console.log(`Rendering position ${index}:`, pos);
+          return `
           <div class="position-card">
             <div class="position-header">
               <h3>${pos.token0.symbol}/${pos.token1.symbol}</h3>
@@ -1620,9 +1624,15 @@ async function loadUserPositions() {
                 Add to MetaMask
               </button>
             </div>
-          </div>
-        `).join('');
+          </div>`;
+        }).join('');
+        
+        console.log("Setting innerHTML...");
+        positionsContainer.innerHTML = positionsHTML;
+        console.log("HTML set successfully!");
       }
+    } else {
+      console.error("ERROR: positionsContainer element not found!");
     }
     
   } catch (error) {
