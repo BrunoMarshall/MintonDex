@@ -1171,12 +1171,22 @@ async function calculateLiquidityB() {
   }
   
   try {
-    // Convert NATIVE_SHM to WSHM_ADDRESS for getReserves call
+    console.log("=== CALCULATE LIQUIDITY B ===");
+    console.log("Token A:", window.selectedAddTokenA.symbol);
+    console.log("Token B:", window.selectedAddTokenB.symbol);
+    console.log("Amount A:", amountA);
+    
+    // Convert NATIVE_SHM to WSHM_ADDRESS for pair lookup
     const tokenAAddress = window.selectedAddTokenA.address === 'NATIVE_SHM' ? WSHM_ADDRESS : window.selectedAddTokenA.address;
     const tokenBAddress = window.selectedAddTokenB.address === 'NATIVE_SHM' ? WSHM_ADDRESS : window.selectedAddTokenB.address;
     
+    console.log("Token A Address:", tokenAAddress);
+    console.log("Token B Address:", tokenBAddress);
+    
     // Check if pair exists first
     const pairAddress = await factoryContract.methods.getPair(tokenAAddress, tokenBAddress).call();
+    
+    console.log("Pair Address:", pairAddress);
     
     // If no pair exists (address is 0x0), skip calculation - this will be a new pool
     if (!pairAddress || pairAddress === '0x0000000000000000000000000000000000000000') {
@@ -1184,23 +1194,45 @@ async function calculateLiquidityB() {
       return;
     }
     
-    const reserves = await routerContract.methods.getReserves(
-      tokenAAddress,
-      tokenBAddress
-    ).call();
+    // Get reserves directly from pair contract
+    const pairContract = new web3.eth.Contract(PAIR_ABI, pairAddress);
+    const reserves = await pairContract.methods.getReserves().call();
+    const token0 = await pairContract.methods.token0().call();
     
-    if (reserves.reserveA === '0' || reserves.reserveB === '0') {
+    console.log("Reserve0:", reserves.reserve0);
+    console.log("Reserve1:", reserves.reserve1);
+    console.log("Token0 from pair:", token0);
+    
+    // Determine which reserve corresponds to which token
+    let reserveA, reserveB;
+    if (token0.toLowerCase() === tokenAAddress.toLowerCase()) {
+      reserveA = reserves.reserve0;
+      reserveB = reserves.reserve1;
+    } else {
+      reserveA = reserves.reserve1;
+      reserveB = reserves.reserve0;
+    }
+    
+    console.log("Reserve A (for Token A):", reserveA);
+    console.log("Reserve B (for Token B):", reserveB);
+    
+    if (reserveA === '0' || reserveB === '0') {
+      console.log("Reserves are zero, cannot calculate");
       return;
     }
     
     const amountAWei = web3.utils.toWei(amountA, 'ether');
-    const optimalB = (BigInt(amountAWei) * BigInt(reserves.reserveB)) / BigInt(reserves.reserveA);
+    const optimalB = (BigInt(amountAWei) * BigInt(reserveB)) / BigInt(reserveA);
+    
+    console.log("Optimal B (wei):", optimalB.toString());
+    console.log("Optimal B (ether):", web3.utils.fromWei(optimalB.toString(), 'ether'));
     
     if (amountB) {
       amountB.value = web3.utils.fromWei(optimalB.toString(), 'ether');
     }
   } catch (error) {
-    console.log('Calculate liquidity B: Pool may not exist yet');
+    console.error('Calculate liquidity B error:', error);
+    console.error('Error details:', error.message);
     // Silently fail - this is normal for new pools
   }
 }
@@ -1215,12 +1247,22 @@ async function calculateLiquidityA() {
   }
   
   try {
-    // Convert NATIVE_SHM to WSHM_ADDRESS for getReserves call
+    console.log("=== CALCULATE LIQUIDITY A ===");
+    console.log("Token A:", window.selectedAddTokenA.symbol);
+    console.log("Token B:", window.selectedAddTokenB.symbol);
+    console.log("Amount B:", amountB);
+    
+    // Convert NATIVE_SHM to WSHM_ADDRESS for pair lookup
     const tokenAAddress = window.selectedAddTokenA.address === 'NATIVE_SHM' ? WSHM_ADDRESS : window.selectedAddTokenA.address;
     const tokenBAddress = window.selectedAddTokenB.address === 'NATIVE_SHM' ? WSHM_ADDRESS : window.selectedAddTokenB.address;
     
+    console.log("Token A Address:", tokenAAddress);
+    console.log("Token B Address:", tokenBAddress);
+    
     // Check if pair exists first
     const pairAddress = await factoryContract.methods.getPair(tokenAAddress, tokenBAddress).call();
+    
+    console.log("Pair Address:", pairAddress);
     
     // If no pair exists (address is 0x0), skip calculation - this will be a new pool
     if (!pairAddress || pairAddress === '0x0000000000000000000000000000000000000000') {
@@ -1228,23 +1270,45 @@ async function calculateLiquidityA() {
       return;
     }
     
-    const reserves = await routerContract.methods.getReserves(
-      tokenAAddress,
-      tokenBAddress
-    ).call();
+    // Get reserves directly from pair contract
+    const pairContract = new web3.eth.Contract(PAIR_ABI, pairAddress);
+    const reserves = await pairContract.methods.getReserves().call();
+    const token0 = await pairContract.methods.token0().call();
     
-    if (reserves.reserveA === '0' || reserves.reserveB === '0') {
+    console.log("Reserve0:", reserves.reserve0);
+    console.log("Reserve1:", reserves.reserve1);
+    console.log("Token0 from pair:", token0);
+    
+    // Determine which reserve corresponds to which token
+    let reserveA, reserveB;
+    if (token0.toLowerCase() === tokenAAddress.toLowerCase()) {
+      reserveA = reserves.reserve0;
+      reserveB = reserves.reserve1;
+    } else {
+      reserveA = reserves.reserve1;
+      reserveB = reserves.reserve0;
+    }
+    
+    console.log("Reserve A (for Token A):", reserveA);
+    console.log("Reserve B (for Token B):", reserveB);
+    
+    if (reserveA === '0' || reserveB === '0') {
+      console.log("Reserves are zero, cannot calculate");
       return;
     }
     
     const amountBWei = web3.utils.toWei(amountB, 'ether');
-    const optimalA = (BigInt(amountBWei) * BigInt(reserves.reserveA)) / BigInt(reserves.reserveB);
+    const optimalA = (BigInt(amountBWei) * BigInt(reserveA)) / BigInt(reserveB);
+    
+    console.log("Optimal A (wei):", optimalA.toString());
+    console.log("Optimal A (ether):", web3.utils.fromWei(optimalA.toString(), 'ether'));
     
     if (amountA) {
       amountA.value = web3.utils.fromWei(optimalA.toString(), 'ether');
     }
   } catch (error) {
-    console.log('Calculate liquidity A: Pool may not exist yet');
+    console.error('Calculate liquidity A error:', error);
+    console.error('Error details:', error.message);
     // Silently fail - this is normal for new pools
   }
 }
