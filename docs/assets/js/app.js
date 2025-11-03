@@ -483,11 +483,32 @@ function setupPoolEventListeners() {
   const addAmountA = document.getElementById('add-amount-a');
   const addAmountB = document.getElementById('add-amount-b');
 
+  // Debounce timers for liquidity calculations
+  let calculateLiquidityBTimeout;
+  let calculateLiquidityATimeout;
+
   if (addBtn) addBtn.addEventListener('click', addLiquidity);
   if (selectAddTokenA) selectAddTokenA.addEventListener('click', () => openTokenModal('addA'));
   if (selectAddTokenB) selectAddTokenB.addEventListener('click', () => openTokenModal('addB'));
-  if (addAmountA) addAmountA.addEventListener('input', calculateLiquidityB);
-  if (addAmountB) addAmountB.addEventListener('input', calculateLiquidityA);
+  
+  // Add debounced input listeners
+  if (addAmountA) {
+    addAmountA.addEventListener('input', () => {
+      clearTimeout(calculateLiquidityBTimeout);
+      calculateLiquidityBTimeout = setTimeout(() => {
+        calculateLiquidityB();
+      }, 300); // 300ms debounce
+    });
+  }
+  
+  if (addAmountB) {
+    addAmountB.addEventListener('input', () => {
+      clearTimeout(calculateLiquidityATimeout);
+      calculateLiquidityATimeout = setTimeout(() => {
+        calculateLiquidityA();
+      }, 300); // 300ms debounce
+    });
+  }
 
   const removeBtn = document.getElementById('remove-liquidity-btn');
   const removeSlider = document.getElementById('remove-slider');
@@ -772,10 +793,30 @@ async function selectToken(address) {
     window.selectedAddTokenA = tokenInfo;
     document.getElementById('add-token-a-symbol').textContent = tokenInfo.symbol;
     document.getElementById('add-balance-a').textContent = `Balance: ${parseFloat(tokenInfo.balance || 0).toFixed(4)}`;
+    
+    // Clear token B amount and recalculate if there's an amount in A
+    const amountA = document.getElementById('add-amount-a');
+    const amountB = document.getElementById('add-amount-b');
+    if (amountB) amountB.value = '';
+    
+    // Trigger recalculation if amount A is filled
+    if (amountA && amountA.value && parseFloat(amountA.value) > 0) {
+      setTimeout(() => calculateLiquidityB(), 100);
+    }
   } else if (currentModalCallback === 'addB') {
     window.selectedAddTokenB = tokenInfo;
     document.getElementById('add-token-b-symbol').textContent = tokenInfo.symbol;
     document.getElementById('add-balance-b').textContent = `Balance: ${parseFloat(tokenInfo.balance || 0).toFixed(4)}`;
+    
+    // Clear token A amount and recalculate if there's an amount in B
+    const amountA = document.getElementById('add-amount-a');
+    const amountB = document.getElementById('add-amount-b');
+    if (amountA) amountA.value = '';
+    
+    // Trigger recalculation if amount B is filled
+    if (amountB && amountB.value && parseFloat(amountB.value) > 0) {
+      setTimeout(() => calculateLiquidityA(), 100);
+    }
   }
 
   updateButtonStates();
@@ -1161,7 +1202,13 @@ async function executeSwap() {
   }
 }
 
+// Track ongoing calculation to prevent race conditions
+let calculatingLiquidityB = false;
+
 async function calculateLiquidityB() {
+  // Prevent multiple simultaneous calculations
+  if (calculatingLiquidityB) return;
+  
   const amountA = document.getElementById('add-amount-a')?.value;
   const amountB = document.getElementById('add-amount-b');
   
@@ -1169,6 +1216,8 @@ async function calculateLiquidityB() {
     if (amountB) amountB.value = '';
     return;
   }
+  
+  calculatingLiquidityB = true;
   
   try {
     console.log("=== CALCULATE LIQUIDITY B ===");
@@ -1191,6 +1240,7 @@ async function calculateLiquidityB() {
     // If no pair exists (address is 0x0), skip calculation - this will be a new pool
     if (!pairAddress || pairAddress === '0x0000000000000000000000000000000000000000') {
       console.log('No existing pool - user can set initial ratio');
+      calculatingLiquidityB = false;
       return;
     }
     
@@ -1218,26 +1268,37 @@ async function calculateLiquidityB() {
     
     if (reserveA === '0' || reserveB === '0') {
       console.log("Reserves are zero, cannot calculate");
+      calculatingLiquidityB = false;
       return;
     }
     
     const amountAWei = web3.utils.toWei(amountA, 'ether');
     const optimalB = (BigInt(amountAWei) * BigInt(reserveB)) / BigInt(reserveA);
     
+    const optimalBEther = web3.utils.fromWei(optimalB.toString(), 'ether');
+    
     console.log("Optimal B (wei):", optimalB.toString());
-    console.log("Optimal B (ether):", web3.utils.fromWei(optimalB.toString(), 'ether'));
+    console.log("Optimal B (ether):", optimalBEther);
     
     if (amountB) {
-      amountB.value = web3.utils.fromWei(optimalB.toString(), 'ether');
+      amountB.value = optimalBEther;
     }
   } catch (error) {
     console.error('Calculate liquidity B error:', error);
     console.error('Error details:', error.message);
     // Silently fail - this is normal for new pools
+  } finally {
+    calculatingLiquidityB = false;
   }
 }
 
+// Track ongoing calculation to prevent race conditions
+let calculatingLiquidityA = false;
+
 async function calculateLiquidityA() {
+  // Prevent multiple simultaneous calculations
+  if (calculatingLiquidityA) return;
+  
   const amountB = document.getElementById('add-amount-b')?.value;
   const amountA = document.getElementById('add-amount-a');
   
@@ -1245,6 +1306,8 @@ async function calculateLiquidityA() {
     if (amountA) amountA.value = '';
     return;
   }
+  
+  calculatingLiquidityA = true;
   
   try {
     console.log("=== CALCULATE LIQUIDITY A ===");
@@ -1267,6 +1330,7 @@ async function calculateLiquidityA() {
     // If no pair exists (address is 0x0), skip calculation - this will be a new pool
     if (!pairAddress || pairAddress === '0x0000000000000000000000000000000000000000') {
       console.log('No existing pool - user can set initial ratio');
+      calculatingLiquidityA = false;
       return;
     }
     
@@ -1294,22 +1358,27 @@ async function calculateLiquidityA() {
     
     if (reserveA === '0' || reserveB === '0') {
       console.log("Reserves are zero, cannot calculate");
+      calculatingLiquidityA = false;
       return;
     }
     
     const amountBWei = web3.utils.toWei(amountB, 'ether');
     const optimalA = (BigInt(amountBWei) * BigInt(reserveA)) / BigInt(reserveB);
     
+    const optimalAEther = web3.utils.fromWei(optimalA.toString(), 'ether');
+    
     console.log("Optimal A (wei):", optimalA.toString());
-    console.log("Optimal A (ether):", web3.utils.fromWei(optimalA.toString(), 'ether'));
+    console.log("Optimal A (ether):", optimalAEther);
     
     if (amountA) {
-      amountA.value = web3.utils.fromWei(optimalA.toString(), 'ether');
+      amountA.value = optimalAEther;
     }
   } catch (error) {
     console.error('Calculate liquidity A error:', error);
     console.error('Error details:', error.message);
     // Silently fail - this is normal for new pools
+  } finally {
+    calculatingLiquidityA = false;
   }
 }
 
