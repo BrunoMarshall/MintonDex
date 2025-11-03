@@ -830,6 +830,24 @@ async function calculateOutput() {
     const fee = parseFloat(amountIn) * 0.003;
     const priceImpact = await calculatePriceImpact(amountInWei, amounts[1], path);
     
+    // Restore the swap details structure if it was replaced by error message
+    if (swapDetails && !document.getElementById('exchange-rate')) {
+      swapDetails.innerHTML = `
+        <div class="detail-row">
+          <span>Exchange Rate:</span>
+          <span id="exchange-rate">-</span>
+        </div>
+        <div class="detail-row">
+          <span>Price Impact:</span>
+          <span id="price-impact" style="color: #fbbf24;">-</span>
+        </div>
+        <div class="detail-row">
+          <span>Fee (0.3%):</span>
+          <span id="swap-fee">-</span>
+        </div>
+      `;
+    }
+    
     document.getElementById('exchange-rate').textContent = `1 ${selectedTokenIn.symbol} = ${exchangeRate.toFixed(6)} ${selectedTokenOut.symbol}`;
     document.getElementById('price-impact').textContent = `${priceImpact.toFixed(2)}%`;
     document.getElementById('swap-fee').textContent = `${fee.toFixed(6)} ${selectedTokenIn.symbol}`;
