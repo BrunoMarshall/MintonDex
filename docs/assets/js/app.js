@@ -846,15 +846,72 @@ async function calculateOutput() {
 }
 async function calculatePriceImpact(amountIn, amountOut, path) {
   try {
-    const reserves = await routerContract.methods.getReserves(path[0], path[1]).call();
-    const reserveIn = reserves.reserveA;
-    const reserveOut = reserves.reserveB;
+    console.log("=== PRICE IMPACT CALCULATION ===");
+    console.log("Amount In (wei):", amountIn);
+    console.log("Amount Out (wei):", amountOut);
+    console.log("Path:", path);
     
-    const exactQuote = (BigInt(amountIn) * BigInt(reserveOut)) / BigInt(reserveIn);
-    const priceImpact = ((BigInt(exactQuote) - BigInt(amountOut)) * BigInt(10000)) / BigInt(exactQuote);
+    // Get reserves from the pair contract directly for more accuracy
+    const pairAddress = await factoryContract.methods.getPair(path[0], path[1]).call();
     
-    return Number(priceImpact) / 100;
+    if (!pairAddress || pairAddress === '0x0000000000000000000000000000000000000000') {
+      console.log("No pair found");
+      return 0;
+    }
+    
+    const pairContract = new web3.eth.Contract(PAIR_ABI, pairAddress);
+    const reserves = await pairContract.methods.getReserves().call();
+    const token0 = await pairContract.methods.token0().call();
+    
+    console.log("Pair address:", pairAddress);
+    console.log("Token0 from pair:", token0);
+    console.log("Reserve0:", reserves.reserve0);
+    console.log("Reserve1:", reserves.reserve1);
+    
+    // Determine which reserve is which based on token order
+    let reserveIn, reserveOut;
+    if (token0.toLowerCase() === path[0].toLowerCase()) {
+      reserveIn = reserves.reserve0;
+      reserveOut = reserves.reserve1;
+    } else {
+      reserveIn = reserves.reserve1;
+      reserveOut = reserves.reserve0;
+    }
+    
+    console.log("Reserve In:", reserveIn);
+    console.log("Reserve Out:", reserveOut);
+    
+    // Calculate the ideal price (without price impact, but with 0.3% fee)
+    // Formula: idealOutput = (amountIn * 997 * reserveOut) / (reserveIn * 1000 + amountIn * 997)
+    const amountInWithFee = BigInt(amountIn) * BigInt(997);
+    const numerator = amountInWithFee * BigInt(reserveOut);
+    const denominator = BigInt(reserveIn) * BigInt(1000) + amountInWithFee;
+    const idealOutput = numerator / denominator;
+    
+    console.log("Ideal output (with fee):", idealOutput.toString());
+    console.log("Actual output:", amountOut);
+    
+    // Calculate price impact
+    // Price impact = (idealOutput - actualOutput) / idealOutput * 100
+    // But since getAmountsOut already includes the fee, they should be the same
+    // The real price impact is: how much worse than the spot price we're getting
+    
+    // Better formula: compare to spot price before trade
+    const spotPrice = (BigInt(reserveOut) * BigInt(10000)) / BigInt(reserveIn);
+    const executionPrice = (BigInt(amountOut) * BigInt(10000)) / BigInt(amountIn);
+    
+    console.log("Spot price (scaled):", spotPrice.toString());
+    console.log("Execution price (scaled):", executionPrice.toString());
+    
+    // Price impact = ((spotPrice - executionPrice) / spotPrice) * 100
+    const priceImpactScaled = ((spotPrice - executionPrice) * BigInt(10000)) / spotPrice;
+    const priceImpact = Number(priceImpactScaled) / 100;
+    
+    console.log("Price Impact:", priceImpact, "%");
+    
+    return Math.abs(priceImpact);
   } catch (error) {
+    console.error("Error calculating price impact:", error);
     return 0;
   }
 }
