@@ -119,6 +119,23 @@ const ROUTER_ABI = [
   },
   {
     "inputs": [
+      { "internalType": "address", "name": "token", "type": "address" },
+      { "internalType": "uint256", "name": "liquidity", "type": "uint256" },
+      { "internalType": "uint256", "name": "amountTokenMin", "type": "uint256" },
+      { "internalType": "uint256", "name": "amountETHMin", "type": "uint256" },
+      { "internalType": "address", "name": "to", "type": "address" },
+      { "internalType": "uint256", "name": "deadline", "type": "uint256" }
+    ],
+    "name": "removeLiquidityETH",
+    "outputs": [
+      { "internalType": "uint256", "name": "amountToken", "type": "uint256" },
+      { "internalType": "uint256", "name": "amountETH", "type": "uint256" }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
       { "internalType": "uint256", "name": "amountIn", "type": "uint256" },
       { "internalType": "uint256", "name": "amountOutMin", "type": "uint256" },
       { "internalType": "address[]", "name": "path", "type": "address[]" },
@@ -911,10 +928,23 @@ async function executeSwap() {
     const amountInWei = web3.utils.toWei(amountIn, 'ether');
     const deadline = Math.floor(Date.now() / 1000) + 60 * 20;
     
+    console.log("=== SWAP DEBUG ===");
+    console.log("Amount In:", amountIn);
+    console.log("Token In:", selectedTokenIn.symbol, selectedTokenIn.address);
+    console.log("Token Out:", selectedTokenOut.symbol, selectedTokenOut.address);
+    console.log("Is Token In Native?", selectedTokenIn.isNative);
+    console.log("Is Token Out Native?", selectedTokenOut.isNative);
+    
+    // Case 1: Swapping SHM for tokens
     if (selectedTokenIn.isNative) {
       const path = [WSHM_ADDRESS, selectedTokenOut.address];
+      console.log("Path:", path);
+      
       const amounts = await routerContract.methods.getAmountsOut(amountInWei, path).call();
       const amountOutMin = (BigInt(amounts[1]) * BigInt(95)) / BigInt(100);
+      
+      console.log("Expected output:", web3.utils.fromWei(amounts[1], 'ether'));
+      console.log("Min output (5% slippage):", web3.utils.fromWei(amountOutMin.toString(), 'ether'));
       
       showStatus('Swapping SHM for tokens...', 'info', 'status-message');
       
@@ -926,29 +956,39 @@ async function executeSwap() {
       ).send({
         from: currentAccount,
         value: amountInWei,
-        maxFeePerGas: web3.utils.toWei('2500', 'gwei'),
-        maxPriorityFeePerGas: web3.utils.toWei('2500', 'gwei'),
         gas: 300000
       });
       
-      showStatus(`Swap successful! ðŸŽ‰ <a href="https://explorer.shardeum.org/tx/${tx.transactionHash}" target="_blank">View Transaction</a>`, 'success', 'status-message');
+      console.log("Swap successful:", tx.transactionHash);
+      showStatus(`Swap successful! 🎉 <a href="https://explorer.shardeum.org/tx/${tx.transactionHash}" target="_blank">View Transaction</a>`, 'success', 'status-message');
     }
+    // Case 2: Swapping tokens for SHM
     else if (selectedTokenOut.isNative) {
       const path = [selectedTokenIn.address, WSHM_ADDRESS];
+      console.log("Path:", path);
+      
       const amounts = await routerContract.methods.getAmountsOut(amountInWei, path).call();
       const amountOutMin = (BigInt(amounts[1]) * BigInt(95)) / BigInt(100);
+      
+      console.log("Expected output:", web3.utils.fromWei(amounts[1], 'ether'));
+      console.log("Min output (5% slippage):", web3.utils.fromWei(amountOutMin.toString(), 'ether'));
       
       const tokenContract = new web3.eth.Contract(ERC20_ABI, selectedTokenIn.address);
       const allowance = await tokenContract.methods.allowance(currentAccount, ROUTER_ADDRESS).call();
       
+      console.log("Current allowance:", web3.utils.fromWei(allowance, 'ether'));
+      
       if (BigInt(allowance) < BigInt(amountInWei)) {
         showStatus('Approving token...', 'info', 'status-message');
-        await tokenContract.methods.approve(ROUTER_ADDRESS, amountInWei).send({
+        const MAX_UINT256 = '115792089237316195423570985008687907853269984665640564039457584007913129639935';
+        
+        await tokenContract.methods.approve(ROUTER_ADDRESS, MAX_UINT256).send({
           from: currentAccount,
-          maxFeePerGas: web3.utils.toWei('2500', 'gwei'),
-          maxPriorityFeePerGas: web3.utils.toWei('2500', 'gwei'),
           gas: 100000
         });
+        
+        console.log("Token approved");
+        await new Promise(resolve => setTimeout(resolve, 3000));
       }
       
       showStatus('Swapping tokens for SHM...', 'info', 'status-message');
@@ -961,29 +1001,39 @@ async function executeSwap() {
         deadline
       ).send({
         from: currentAccount,
-        maxFeePerGas: web3.utils.toWei('2500', 'gwei'),
-        maxPriorityFeePerGas: web3.utils.toWei('2500', 'gwei'),
         gas: 300000
       });
       
-      showStatus(`Swap successful! ðŸŽ‰ <a href="https://explorer.shardeum.org/tx/${tx.transactionHash}" target="_blank">View Transaction</a>`, 'success', 'status-message');
+      console.log("Swap successful:", tx.transactionHash);
+      showStatus(`Swap successful! 🎉 <a href="https://explorer.shardeum.org/tx/${tx.transactionHash}" target="_blank">View Transaction</a>`, 'success', 'status-message');
     }
+    // Case 3: Swapping tokens for tokens
     else {
       const path = [selectedTokenIn.address, selectedTokenOut.address];
+      console.log("Path:", path);
+      
       const amounts = await routerContract.methods.getAmountsOut(amountInWei, path).call();
       const amountOutMin = (BigInt(amounts[1]) * BigInt(95)) / BigInt(100);
+      
+      console.log("Expected output:", web3.utils.fromWei(amounts[1], 'ether'));
+      console.log("Min output (5% slippage):", web3.utils.fromWei(amountOutMin.toString(), 'ether'));
       
       const tokenContract = new web3.eth.Contract(ERC20_ABI, selectedTokenIn.address);
       const allowance = await tokenContract.methods.allowance(currentAccount, ROUTER_ADDRESS).call();
       
+      console.log("Current allowance:", web3.utils.fromWei(allowance, 'ether'));
+      
       if (BigInt(allowance) < BigInt(amountInWei)) {
         showStatus('Approving token...', 'info', 'status-message');
-        await tokenContract.methods.approve(ROUTER_ADDRESS, amountInWei).send({
+        const MAX_UINT256 = '115792089237316195423570985008687907853269984665640564039457584007913129639935';
+        
+        await tokenContract.methods.approve(ROUTER_ADDRESS, MAX_UINT256).send({
           from: currentAccount,
-          maxFeePerGas: web3.utils.toWei('2500', 'gwei'),
-          maxPriorityFeePerGas: web3.utils.toWei('2500', 'gwei'),
           gas: 100000
         });
+        
+        console.log("Token approved");
+        await new Promise(resolve => setTimeout(resolve, 3000));
       }
       
       showStatus('Swapping tokens...', 'info', 'status-message');
@@ -996,12 +1046,11 @@ async function executeSwap() {
         deadline
       ).send({
         from: currentAccount,
-        maxFeePerGas: web3.utils.toWei('2500', 'gwei'),
-        maxPriorityFeePerGas: web3.utils.toWei('2500', 'gwei'),
         gas: 300000
       });
       
-      showStatus(`Swap successful! ðŸŽ‰ <a href="https://explorer.shardeum.org/tx/${tx.transactionHash}" target="_blank">View Transaction</a>`, 'success', 'status-message');
+      console.log("Swap successful:", tx.transactionHash);
+      showStatus(`Swap successful! 🎉 <a href="https://explorer.shardeum.org/tx/${tx.transactionHash}" target="_blank">View Transaction</a>`, 'success', 'status-message');
     }
     
     document.getElementById('input-amount').value = '';
@@ -1010,7 +1059,30 @@ async function executeSwap() {
     
   } catch (error) {
     console.error('Swap error:', error);
-    showStatus(error.message || 'Swap failed', 'error', 'status-message');
+    console.error('Error details:', error.message);
+    console.error('Error stack:', error.stack);
+    
+    let errorMsg = 'Swap failed';
+    
+    if (error.message) {
+      if (error.message.includes('insufficient funds')) {
+        errorMsg = 'Insufficient funds for gas fees';
+      } else if (error.message.includes('user rejected') || error.message.includes('User denied')) {
+        errorMsg = 'Transaction cancelled by user';
+      } else if (error.message.includes('INSUFFICIENT_OUTPUT_AMOUNT')) {
+        errorMsg = 'Insufficient output amount. Try increasing slippage or reducing input amount.';
+      } else if (error.message.includes('INSUFFICIENT_LIQUIDITY')) {
+        errorMsg = 'Insufficient liquidity for this trade';
+      } else if (error.message.includes('EXPIRED')) {
+        errorMsg = 'Transaction expired. Please try again.';
+      } else if (error.message.includes('execution reverted')) {
+        errorMsg = 'Transaction reverted. Check token approvals and pool liquidity.';
+      } else {
+        errorMsg = `Error: ${error.message.substring(0, 150)}`;
+      }
+    }
+    
+    showStatus(errorMsg, 'error', 'status-message');
   }
 }
 
@@ -1404,44 +1476,91 @@ async function removeLiquidity() {
     const pairAddress = pairSelect.value;
     const pairContract = new web3.eth.Contract(PAIR_ABI, pairAddress);
     
+    // Get LP balance and calculate amount to remove
     const lpBalance = await pairContract.methods.balanceOf(currentAccount).call();
     const liquidityToRemove = (BigInt(lpBalance) * BigInt(percentage)) / BigInt(100);
     
+    console.log("=== REMOVE LIQUIDITY DEBUG ===");
+    console.log("LP Balance:", web3.utils.fromWei(lpBalance, 'ether'));
+    console.log("Liquidity to remove:", web3.utils.fromWei(liquidityToRemove.toString(), 'ether'));
+    console.log("Percentage:", percentage);
+    
+    // Get token addresses
     const token0 = await pairContract.methods.token0().call();
     const token1 = await pairContract.methods.token1().call();
     
+    console.log("Token0:", token0);
+    console.log("Token1:", token1);
+    console.log("WSHM:", WSHM_ADDRESS);
+    
+    // Check if this is a WSHM pair (needs removeLiquidityETH)
+    const isToken0WSHM = token0.toLowerCase() === WSHM_ADDRESS.toLowerCase();
+    const isToken1WSHM = token1.toLowerCase() === WSHM_ADDRESS.toLowerCase();
+    const isWSHMPair = isToken0WSHM || isToken1WSHM;
+    
+    console.log("Is WSHM pair?", isWSHMPair);
+    
     const deadline = Math.floor(Date.now() / 1000) + 60 * 20;
     
+    // Check and approve LP tokens
     const allowance = await pairContract.methods.allowance(currentAccount, ROUTER_ADDRESS).call();
+    console.log("Current allowance:", web3.utils.fromWei(allowance, 'ether'));
     
     if (BigInt(allowance) < BigInt(liquidityToRemove)) {
       showStatus('Approving LP tokens...', 'info', 'remove-status');
-      await pairContract.methods.approve(ROUTER_ADDRESS, liquidityToRemove.toString()).send({
+      const MAX_UINT256 = '115792089237316195423570985008687907853269984665640564039457584007913129639935';
+      
+      await pairContract.methods.approve(ROUTER_ADDRESS, MAX_UINT256).send({
         from: currentAccount,
-        maxFeePerGas: web3.utils.toWei('2500', 'gwei'),
-        maxPriorityFeePerGas: web3.utils.toWei('2500', 'gwei'),
         gas: 100000
       });
+      
+      console.log("LP tokens approved");
+      await new Promise(resolve => setTimeout(resolve, 3000));
     }
     
     showStatus('Removing liquidity...', 'info', 'remove-status');
     
-    const tx = await routerContract.methods.removeLiquidity(
-      token0,
-      token1,
-      liquidityToRemove.toString(),
-      '0',
-      '0',
-      currentAccount,
-      deadline
-    ).send({
-      from: currentAccount,
-      maxFeePerGas: web3.utils.toWei('2500', 'gwei'),
-      maxPriorityFeePerGas: web3.utils.toWei('2500', 'gwei'),
-      gas: 500000
-    });
+    let tx;
     
-    showStatus(`Liquidity removed successfully! ðŸŽ‰ <a href="https://explorer.shardeum.org/tx/${tx.transactionHash}" target="_blank">View Transaction</a>`, 'success', 'remove-status');
+    if (isWSHMPair) {
+      // Use removeLiquidityETH for WSHM pairs
+      const otherToken = isToken0WSHM ? token1 : token0;
+      
+      console.log("Using removeLiquidityETH");
+      console.log("Other token:", otherToken);
+      
+      tx = await routerContract.methods.removeLiquidityETH(
+        otherToken,
+        liquidityToRemove.toString(),
+        '0', // amountTokenMin (0 for testing, use slippage in production)
+        '0', // amountETHMin (0 for testing, use slippage in production)
+        currentAccount,
+        deadline
+      ).send({
+        from: currentAccount,
+        gas: 500000
+      });
+    } else {
+      // Standard token-token removal
+      console.log("Using removeLiquidity for token-token pair");
+      
+      tx = await routerContract.methods.removeLiquidity(
+        token0,
+        token1,
+        liquidityToRemove.toString(),
+        '0', // amountAMin (0 for testing, use slippage in production)
+        '0', // amountBMin (0 for testing, use slippage in production)
+        currentAccount,
+        deadline
+      ).send({
+        from: currentAccount,
+        gas: 500000
+      });
+    }
+    
+    console.log("Transaction successful:", tx.transactionHash);
+    showStatus(`Liquidity removed successfully! 🎉 <a href="https://explorer.shardeum.org/tx/${tx.transactionHash}" target="_blank">View Transaction</a>`, 'success', 'remove-status');
     
     removeSlider.value = 0;
     updateRemoveAmount();
@@ -1449,7 +1568,26 @@ async function removeLiquidity() {
     
   } catch (error) {
     console.error('Remove liquidity error:', error);
-    showStatus(error.message || 'Failed to remove liquidity', 'error', 'remove-status');
+    console.error('Error details:', error.message);
+    console.error('Error stack:', error.stack);
+    
+    let errorMsg = 'Failed to remove liquidity';
+    
+    if (error.message) {
+      if (error.message.includes('insufficient funds')) {
+        errorMsg = 'Insufficient SHM for gas fees';
+      } else if (error.message.includes('user rejected') || error.message.includes('User denied')) {
+        errorMsg = 'Transaction cancelled by user';
+      } else if (error.message.includes('INSUFFICIENT_')) {
+        errorMsg = 'Insufficient liquidity. The pool may have changed.';
+      } else if (error.message.includes('EXPIRED')) {
+        errorMsg = 'Transaction expired. Please try again.';
+      } else {
+        errorMsg = `Error: ${error.message.substring(0, 150)}`;
+      }
+    }
+    
+    showStatus(errorMsg, 'error', 'remove-status');
   }
 }
 
