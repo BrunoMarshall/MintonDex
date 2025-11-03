@@ -1418,9 +1418,7 @@ async function removeLiquidity() {
       showStatus('Approving LP tokens...', 'info', 'remove-status');
       await pairContract.methods.approve(ROUTER_ADDRESS, liquidityToRemove.toString()).send({
         from: currentAccount,
-        maxFeePerGas: web3.utils.toWei('2500', 'gwei'),
-        maxPriorityFeePerGas: web3.utils.toWei('2500', 'gwei'),
-        gas: 100000
+        gas: 150000
       });
     }
     
@@ -1436,8 +1434,6 @@ async function removeLiquidity() {
       deadline
     ).send({
       from: currentAccount,
-      maxFeePerGas: web3.utils.toWei('2500', 'gwei'),
-      maxPriorityFeePerGas: web3.utils.toWei('2500', 'gwei'),
       gas: 500000
     });
     
