@@ -1597,8 +1597,6 @@ async function addLiquidity() {
     showStatus('❌ Invalid number format. Please enter valid numbers.', 'error', 'add-status');
     return;
   }
-    return;
-  }
   
   try {
     const amountAWei = web3.utils.toWei(amountA, 'ether');
