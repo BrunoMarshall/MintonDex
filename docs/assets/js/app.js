@@ -437,7 +437,13 @@ function setupEventListeners() {
   const maxBtn = document.getElementById('max-btn');
 
   if (swapBtn) swapBtn.addEventListener('click', executeSwap);
-  if (inputAmount) inputAmount.addEventListener('input', calculateOutput);
+  if (inputAmount) {
+    // Sanitize input - only allow numbers and single decimal point
+    inputAmount.addEventListener('input', (e) => {
+      sanitizeNumberInput(e.target);
+      calculateOutput();
+    });
+  }
   if (selectTokenIn) selectTokenIn.addEventListener('click', () => openTokenModal('in'));
   if (selectTokenOut) selectTokenOut.addEventListener('click', () => openTokenModal('out'));
   if (swapDirection) swapDirection.addEventListener('click', flipTokens);
@@ -468,6 +474,32 @@ function setupEventListeners() {
   }
 }
 
+// Sanitize number input to only allow valid decimal numbers
+function sanitizeNumberInput(input) {
+  let value = input.value;
+  
+  // Remove any characters that aren't digits or decimal point
+  value = value.replace(/[^\d.]/g, '');
+  
+  // Ensure only one decimal point
+  const parts = value.split('.');
+  if (parts.length > 2) {
+    value = parts[0] + '.' + parts.slice(1).join('');
+  }
+  
+  // Prevent leading zeros (except for 0.something)
+  if (value.length > 1 && value[0] === '0' && value[1] !== '.') {
+    value = value.substring(1);
+  }
+  
+  // Limit decimal places to 18 (standard for most tokens)
+  if (parts.length === 2 && parts[1].length > 18) {
+    value = parts[0] + '.' + parts[1].substring(0, 18);
+  }
+  
+  input.value = value;
+}
+
 function setupPoolEventListeners() {
   const tabBtns = document.querySelectorAll('.tab-btn');
   tabBtns.forEach(btn => {
@@ -491,9 +523,10 @@ function setupPoolEventListeners() {
   if (selectAddTokenA) selectAddTokenA.addEventListener('click', () => openTokenModal('addA'));
   if (selectAddTokenB) selectAddTokenB.addEventListener('click', () => openTokenModal('addB'));
   
-  // Add debounced input listeners
+  // Add debounced and sanitized input listeners
   if (addAmountA) {
-    addAmountA.addEventListener('input', () => {
+    addAmountA.addEventListener('input', (e) => {
+      sanitizeNumberInput(e.target);
       clearTimeout(calculateLiquidityBTimeout);
       calculateLiquidityBTimeout = setTimeout(() => {
         calculateLiquidityB();
@@ -502,7 +535,8 @@ function setupPoolEventListeners() {
   }
   
   if (addAmountB) {
-    addAmountB.addEventListener('input', () => {
+    addAmountB.addEventListener('input', (e) => {
+      sanitizeNumberInput(e.target);
       clearTimeout(calculateLiquidityATimeout);
       calculateLiquidityATimeout = setTimeout(() => {
         calculateLiquidityA();
@@ -790,6 +824,21 @@ async function selectToken(address) {
     document.getElementById('token-out-symbol').textContent = tokenInfo.symbol;
     document.getElementById('balance-out').textContent = `Balance: ${parseFloat(tokenInfo.balance || 0).toFixed(4)}`;
   } else if (currentModalCallback === 'addA') {
+    // EDGE CASE: Check if user is selecting the same token as Token B
+    if (window.selectedAddTokenB) {
+      const tokenAAddress = tokenInfo.address === 'NATIVE_SHM' ? WSHM_ADDRESS : tokenInfo.address;
+      const tokenBAddress = window.selectedAddTokenB.address === 'NATIVE_SHM' ? WSHM_ADDRESS : window.selectedAddTokenB.address;
+      
+      if (tokenAAddress.toLowerCase() === tokenBAddress.toLowerCase()) {
+        showStatus(`❌ Cannot select ${tokenInfo.symbol} - already selected as Token B. Please choose a different token.`, 'error', 'add-status');
+        setTimeout(() => {
+          const statusEl = document.getElementById('add-status');
+          if (statusEl) statusEl.style.display = 'none';
+        }, 5000);
+        return;
+      }
+    }
+    
     window.selectedAddTokenA = tokenInfo;
     document.getElementById('add-token-a-symbol').textContent = tokenInfo.symbol;
     document.getElementById('add-balance-a').textContent = `Balance: ${parseFloat(tokenInfo.balance || 0).toFixed(4)}`;
@@ -804,6 +853,21 @@ async function selectToken(address) {
       setTimeout(() => calculateLiquidityB(), 100);
     }
   } else if (currentModalCallback === 'addB') {
+    // EDGE CASE: Check if user is selecting the same token as Token A
+    if (window.selectedAddTokenA) {
+      const tokenAAddress = window.selectedAddTokenA.address === 'NATIVE_SHM' ? WSHM_ADDRESS : window.selectedAddTokenA.address;
+      const tokenBAddress = tokenInfo.address === 'NATIVE_SHM' ? WSHM_ADDRESS : tokenInfo.address;
+      
+      if (tokenAAddress.toLowerCase() === tokenBAddress.toLowerCase()) {
+        showStatus(`❌ Cannot select ${tokenInfo.symbol} - already selected as Token A. Please choose a different token.`, 'error', 'add-status');
+        setTimeout(() => {
+          const statusEl = document.getElementById('add-status');
+          if (statusEl) statusEl.style.display = 'none';
+        }, 5000);
+        return;
+      }
+    }
+    
     window.selectedAddTokenB = tokenInfo;
     document.getElementById('add-token-b-symbol').textContent = tokenInfo.symbol;
     document.getElementById('add-balance-b').textContent = `Balance: ${parseFloat(tokenInfo.balance || 0).toFixed(4)}`;
@@ -886,12 +950,51 @@ async function calculateOutput() {
           <span>Fee (0.3%):</span>
           <span id="swap-fee">-</span>
         </div>
+        <div id="price-impact-warning" style="margin-top: 10px;"></div>
       `;
     }
     
     document.getElementById('exchange-rate').textContent = `1 ${selectedTokenIn.symbol} = ${exchangeRate.toFixed(6)} ${selectedTokenOut.symbol}`;
-    document.getElementById('price-impact').textContent = `${priceImpact.toFixed(2)}%`;
     document.getElementById('swap-fee').textContent = `${fee.toFixed(6)} ${selectedTokenIn.symbol}`;
+    
+    // Set price impact with color coding and warnings
+    const priceImpactEl = document.getElementById('price-impact');
+    const priceImpactWarningEl = document.getElementById('price-impact-warning');
+    
+    if (priceImpactEl) {
+      priceImpactEl.textContent = `${priceImpact.toFixed(2)}%`;
+      
+      // Color code based on price impact severity
+      if (priceImpact < 1) {
+        priceImpactEl.style.color = '#10b981'; // Green - good
+      } else if (priceImpact < 3) {
+        priceImpactEl.style.color = '#fbbf24'; // Yellow - moderate
+      } else if (priceImpact < 5) {
+        priceImpactEl.style.color = '#f97316'; // Orange - high
+      } else {
+        priceImpactEl.style.color = '#ef4444'; // Red - very high
+      }
+    }
+    
+    // Display warnings for high price impact
+    if (priceImpactWarningEl) {
+      if (priceImpact >= 15) {
+        priceImpactWarningEl.innerHTML = '<div style="color: #ef4444; background: #fee; padding: 10px; border-radius: 8px; font-size: 0.9rem;"><strong>⚠️ EXTREME PRICE IMPACT!</strong><br>This swap will significantly move the market. Consider splitting into smaller trades.</div>';
+      } else if (priceImpact >= 5) {
+        priceImpactWarningEl.innerHTML = '<div style="color: #f97316; background: #fff7ed; padding: 10px; border-radius: 8px; font-size: 0.9rem;"><strong>⚠️ High Price Impact</strong><br>You may receive significantly less than expected. Consider reducing your amount.</div>';
+      } else if (priceImpact >= 3) {
+        priceImpactWarningEl.innerHTML = '<div style="color: #fbbf24; background: #fffbeb; padding: 10px; border-radius: 8px; font-size: 0.85rem;">⚠️ Moderate price impact - proceed with caution</div>';
+      } else {
+        priceImpactWarningEl.innerHTML = '';
+      }
+    }
+    
+    // EDGE CASE: Check if output amount is extremely small (possible rounding issue)
+    if (parseFloat(amountOut) < 0.000001 && parseFloat(amountIn) > 0.001) {
+      if (priceImpactWarningEl) {
+        priceImpactWarningEl.innerHTML = '<div style="color: #ef4444; background: #fee; padding: 10px; border-radius: 8px; font-size: 0.9rem;"><strong>❌ Output too small!</strong><br>This trade would result in dust. The pool may have insufficient liquidity.</div>';
+      }
+    }
     
     if (swapDetails) swapDetails.style.display = 'block';
   } catch (error) {
@@ -1031,11 +1134,67 @@ async function executeSwap() {
     return;
   }
   
+  // EDGE CASE 1: Same token selected for input and output
+  const tokenInAddress = selectedTokenIn.isNative ? WSHM_ADDRESS : selectedTokenIn.address;
+  const tokenOutAddress = selectedTokenOut.isNative ? WSHM_ADDRESS : selectedTokenOut.address;
+  
+  if (tokenInAddress.toLowerCase() === tokenOutAddress.toLowerCase()) {
+    showStatus('❌ Cannot swap a token for itself. Please select two different tokens.', 'error', 'status-message');
+    return;
+  }
+  
   const amountIn = document.getElementById('input-amount').value;
   
-  if (!amountIn || parseFloat(amountIn) <= 0) {
-    showStatus('Please enter an amount', 'error', 'status-message');
+  // EDGE CASE 2: Empty amount
+  if (!amountIn) {
+    showStatus('Please enter an amount to swap', 'error', 'status-message');
     return;
+  }
+  
+  const amountInNum = parseFloat(amountIn);
+  
+  // EDGE CASE 3: Zero or negative amounts
+  if (amountInNum <= 0) {
+    showStatus('❌ Amount must be greater than zero', 'error', 'status-message');
+    return;
+  }
+  
+  // EDGE CASE 4: Very small amounts (dust)
+  if (amountInNum < 0.000001) {
+    showStatus('⚠️ Amount is too small. Minimum swap amount is 0.000001', 'error', 'status-message');
+    return;
+  }
+  
+  // EDGE CASE 5: Invalid number format
+  if (isNaN(amountInNum)) {
+    showStatus('❌ Invalid number format. Please enter a valid number.', 'error', 'status-message');
+    return;
+  }
+  
+  // EDGE CASE 6: Check balance before attempting swap
+  try {
+    let userBalance;
+    if (selectedTokenIn.isNative) {
+      userBalance = await web3.eth.getBalance(currentAccount);
+      userBalance = web3.utils.fromWei(userBalance, 'ether');
+      
+      // Need to keep some for gas
+      if (parseFloat(userBalance) < amountInNum + 0.01) {
+        showStatus(`❌ Insufficient SHM balance. You have ${parseFloat(userBalance).toFixed(6)} SHM but need ${amountInNum} + gas fees.`, 'error', 'status-message');
+        return;
+      }
+    } else {
+      const tokenContract = new web3.eth.Contract(ERC20_ABI, selectedTokenIn.address);
+      userBalance = await tokenContract.methods.balanceOf(currentAccount).call();
+      userBalance = web3.utils.fromWei(userBalance, 'ether');
+      
+      if (parseFloat(userBalance) < amountInNum) {
+        showStatus(`❌ Insufficient ${selectedTokenIn.symbol} balance. You have ${parseFloat(userBalance).toFixed(6)} but trying to swap ${amountInNum}`, 'error', 'status-message');
+        return;
+      }
+    }
+  } catch (error) {
+    console.error('Error checking balance:', error);
   }
   
   try {
@@ -1393,11 +1552,51 @@ async function addLiquidity() {
     return;
   }
   
+  // EDGE CASE 1: Same token selected for both A and B
+  const tokenAAddress = window.selectedAddTokenA.address === 'NATIVE_SHM' ? WSHM_ADDRESS : window.selectedAddTokenA.address;
+  const tokenBAddress = window.selectedAddTokenB.address === 'NATIVE_SHM' ? WSHM_ADDRESS : window.selectedAddTokenB.address;
+  
+  if (tokenAAddress.toLowerCase() === tokenBAddress.toLowerCase()) {
+    showStatus('❌ Cannot create a pool with the same token. Please select two different tokens.', 'error', 'add-status');
+    return;
+  }
+  
   const amountA = document.getElementById('add-amount-a').value;
   const amountB = document.getElementById('add-amount-b').value;
   
-  if (!amountA || !amountB || parseFloat(amountA) <= 0 || parseFloat(amountB) <= 0) {
-    showStatus('Please enter valid amounts', 'error', 'add-status');
+  // EDGE CASE 2: Empty or invalid amounts
+  if (!amountA || !amountB) {
+    showStatus('Please enter amounts for both tokens', 'error', 'add-status');
+    return;
+  }
+  
+  const amountANum = parseFloat(amountA);
+  const amountBNum = parseFloat(amountB);
+  
+  // EDGE CASE 3: Zero or negative amounts
+  if (amountANum <= 0 || amountBNum <= 0) {
+    showStatus('❌ Amounts must be greater than zero', 'error', 'add-status');
+    return;
+  }
+  
+  // EDGE CASE 4: Very small amounts (dust)
+  if (amountANum < 0.000001 || amountBNum < 0.000001) {
+    showStatus('⚠️ Amounts are too small. Minimum amount is 0.000001', 'error', 'add-status');
+    return;
+  }
+  
+  // EDGE CASE 5: Extremely large amounts that might cause overflow
+  const MAX_SAFE_AMOUNT = 1000000000; // 1 billion tokens
+  if (amountANum > MAX_SAFE_AMOUNT || amountBNum > MAX_SAFE_AMOUNT) {
+    showStatus('❌ Amount is too large. Maximum is 1 billion tokens per transaction.', 'error', 'add-status');
+    return;
+  }
+  
+  // EDGE CASE 6: Invalid number format (NaN)
+  if (isNaN(amountANum) || isNaN(amountBNum)) {
+    showStatus('❌ Invalid number format. Please enter valid numbers.', 'error', 'add-status');
+    return;
+  }
     return;
   }
   
