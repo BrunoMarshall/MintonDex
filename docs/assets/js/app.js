@@ -1408,18 +1408,18 @@ async function calculateLiquidityB() {
     const reserves = await pairContract.methods.getReserves().call();
     const token0 = await pairContract.methods.token0().call();
     
-    console.log("Reserve0:", reserves.reserve0);
-    console.log("Reserve1:", reserves.reserve1);
+    console.log("Reserve0:", reserves._reserve0 || reserves.reserve0);
+    console.log("Reserve1:", reserves._reserve1 || reserves.reserve1);
     console.log("Token0 from pair:", token0);
     
     // Determine which reserve corresponds to which token
     let reserveA, reserveB;
     if (token0.toLowerCase() === tokenAAddress.toLowerCase()) {
-      reserveA = reserves.reserve0;
-      reserveB = reserves.reserve1;
+      reserveA = reserves._reserve0 || reserves.reserve0;
+      reserveB = reserves._reserve1 || reserves.reserve1;
     } else {
-      reserveA = reserves.reserve1;
-      reserveB = reserves.reserve0;
+      reserveA = reserves._reserve1 || reserves.reserve1;
+      reserveB = reserves._reserve0 || reserves.reserve0;
     }
     
     console.log("Reserve A (for Token A):", reserveA);
@@ -1498,18 +1498,18 @@ async function calculateLiquidityA() {
     const reserves = await pairContract.methods.getReserves().call();
     const token0 = await pairContract.methods.token0().call();
     
-    console.log("Reserve0:", reserves.reserve0);
-    console.log("Reserve1:", reserves.reserve1);
+    console.log("Reserve0:", reserves._reserve0 || reserves.reserve0);
+    console.log("Reserve1:", reserves._reserve1 || reserves.reserve1);
     console.log("Token0 from pair:", token0);
     
     // Determine which reserve corresponds to which token
     let reserveA, reserveB;
     if (token0.toLowerCase() === tokenAAddress.toLowerCase()) {
-      reserveA = reserves.reserve0;
-      reserveB = reserves.reserve1;
+      reserveA = reserves._reserve0 || reserves.reserve0;
+      reserveB = reserves._reserve1 || reserves.reserve1;
     } else {
-      reserveA = reserves.reserve1;
-      reserveB = reserves.reserve0;
+      reserveA = reserves._reserve1 || reserves.reserve1;
+      reserveB = reserves._reserve0 || reserves.reserve0;
     }
     
     console.log("Reserve A (for Token A):", reserveA);
