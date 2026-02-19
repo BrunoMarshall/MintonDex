@@ -47,6 +47,13 @@
       "symbol": "VEND",
       "decimals": 18,
       "logoURI": "https://raw.githubusercontent.com/BrunoMarshall/MintonDex/main/logos/0x51a1d48cB931618aE4B4a8Fb6F52894528b38823.png"
+    },
+   {
+      "address": "0x5e83f20a01b1cEE8DFD97Bb1806B22386e674F23",
+      "name": "MapleFi",
+      "symbol": "MapleFi",
+      "decimals": 18,
+      "logoURI": "https://raw.githubusercontent.com/BrunoMarshall/MintonDex/main/logos/0x5e83f20a01b1cEE8DFD97Bb1806B22386e674F23.png"
     }
   ]
 }
